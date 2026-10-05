@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rifa Coberta | Coffee Music Cafeteria - Beberibe/CE</title>
+  <meta name="description" content="Participe da Rifa Coberta da Coffee Music Cafeteria e concorra a um final de semana inesquecível em Beberibe/CE!">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <?!= include('styles'); ?>
+</head>
+<body>
+
+  <!-- Topo & Identidade Visual -->
+  <header class="site-header" role="banner">
+    <div class="container header-content">
+      <div class="logo-area">
+        <div class="coffee-icon-badge" aria-hidden="true">☕</div>
+        <div>
+          <h1 class="brand-title">Coffee Music</h1>
+          <span class="brand-subtitle">Cafeteria &amp; Experiências</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn-outline-header" onclick="openConsultarModal()">
+          🔍 Consultar Participação
+        </button>
+        <a href="?pagina=admin" class="btn-outline-header" title="Painel Administrativo">
+          ⚙️ Admin
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" role="main">
+    <!-- Hero da Campanha -->
+    <section class="hero-card" aria-labelledby="campanha-titulo">
+      <span class="hero-tag">🌴 Campanha Especial</span>
+      <h2 id="campanha-titulo" class="hero-title">RIFA COBERTA</h2>
+      <p style="color: var(--text-muted); font-size: 1.05rem;">
+        Participe com a Coffee Music e concorra a momentos inesquecíveis no litoral cearense!
+      </p>
+
+      <div class="hero-prize">
+        <div class="prize-icon" aria-hidden="true">🏖️</div>
+        <div class="prize-text">
+          <h3>Prêmio Exclusivo</h3>
+          <p id="hero-premio-desc">Final de semana em uma linda casa de praia em Beberibe/CE.</p>
+        </div>
+      </div>
+
+      <div class="hero-details-row">
+        <div class="detail-pill">
+          <span class="detail-label">Total de Pontos</span>
+          <span class="detail-value" id="hero-total-pontos">500</span>
+        </div>
+        <div class="detail-pill">
+          <span class="detail-label">Valor por Ponto</span>
+          <span class="detail-value highlight" id="hero-valor-unitario">R$ 20,00</span>
+        </div>
+        <div class="detail-pill">
+          <span class="detail-label">Tempo de Reserva</span>
+          <span class="detail-value">15 minutos</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Resumo dos Números (Cards de Status) -->
+    <section class="stats-grid" aria-label="Estatísticas da Rifa">
+      <div class="stat-card stat-disp">
+        <div class="stat-number" id="count-disponiveis">-</div>
+        <div class="stat-title">Disponíveis</div>
+      </div>
+      <div class="stat-card stat-res">
+        <div class="stat-number" id="count-reservados">-</div>
+        <div class="stat-title">Reservados</div>
+      </div>
+      <div class="stat-card stat-val">
+        <div class="stat-number" id="count-aguardando">-</div>
+        <div class="stat-title">Em Validação</div>
+      </div>
+      <div class="stat-card stat-conf">
+        <div class="stat-number" id="count-confirmados">-</div>
+        <div class="stat-title">Confirmados</div>
+      </div>
+    </section>
+
+    <!-- Controles & Legenda -->
+    <section class="grid-controls" aria-label="Legenda e Filtros">
+      <div class="legend-items">
+        <div class="legend-item"><span class="legend-dot disp"></span> Disponível</div>
+        <div class="legend-item"><span class="legend-dot res"></span> Reservado</div>
+        <div class="legend-item"><span class="legend-dot val"></span> Aguardando Validação</div>
+        <div class="legend-item"><span class="legend-dot conf"></span> Confirmado</div>
+      </div>
+      <div class="filter-input-wrap">
+        <span class="filter-icon">🔍</span>
+        <input type="text" id="filtro-numero" class="filter-input" placeholder="Buscar número..." maxlength="3" oninput="filtrarNumeros(this.value)">
+      </div>
+    </section>
+
+    <!-- Grade dos 500 Números -->
+    <section class="numbers-section" aria-label="Grade de Escolha dos Números">
+      <div class="section-title-wrap">
+        <h3 class="section-title">Escolha seus números da sorte:</h3>
+        <span class="live-badge" title="Status sincronizado automaticamente">
+          <span class="pulse-dot"></span> Sincronização ao vivo
+        </span>
+      </div>
+
+      <div id="grade-numeros" class="numbers-grid" role="region" aria-live="polite">
+        <!-- Gerado via JavaScript (001 a 500) -->
+        <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">
+          Carregando números da Rifa Coberta...
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Barra Flutuante de Seleção (Mobile e Desktop) -->
+  <aside id="barra-selecao" class="selection-bar" aria-label="Resumo dos números selecionados">
+    <div class="bar-container">
+      <div class="bar-info">
+        <span class="bar-badge" id="bar-qtd-selecionada">0 pontos</span>
+        <div class="bar-numbers-list" id="bar-lista-numeros">Nenhum número selecionado</div>
+        <div class="bar-total">
+          <span class="bar-total-label">Total a pagar</span>
+          <span class="bar-total-val" id="bar-valor-total">R$ 0,00</span>
+        </div>
+      </div>
+      <button type="button" class="btn-continue" onclick="abrirModalDados()">
+        <span>CONTINUAR</span> ➔
+      </button>
+    </div>
+  </aside>
+
+  <!-- MODAL 1: Dados do Participante -->
+  <div id="modal-dados" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-dados-titulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-dados-titulo" class="modal-title">Identificação do Participante</h3>
+        <button type="button" class="modal-close" onclick="fecharModal('modal-dados')" aria-label="Fechar">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="background: #fbf8f3; padding: 12px; border-radius: var(--radius-sm); margin-bottom: 16px; border: 1px solid var(--border-color);">
+          <div style="font-size: 0.85rem; color: var(--text-muted);">Números selecionados:</div>
+          <div id="modal-resumo-numeros" style="font-weight: 800; font-size: 1.05rem; color: var(--primary);"></div>
+          <div style="display: flex; justify-content: space-between; margin-top: 6px; font-weight: 700; font-size: 0.9rem;">
+            <span id="modal-resumo-qtd"></span>
+            <span id="modal-resumo-total" style="color: #b87700;"></span>
+          </div>
+        </div>
+
+        <form id="form-participante" onsubmit="submeterReserva(event)">
+          <div class="form-group">
+            <label for="part-nome" class="form-label">Nome Completo *</label>
+            <input type="text" id="part-nome" class="form-control" placeholder="Ex: João da Silva" required minlength="3">
+          </div>
+          <div class="form-group">
+            <label for="part-whatsapp" class="form-label">WhatsApp com DDD *</label>
+            <input type="tel" id="part-whatsapp" class="form-control" placeholder="(85) 99999-9999" required oninput="mascaraWhatsApp(this)">
+            <div class="input-helper">Usado para validação e envio do resultado do sorteio.</div>
+          </div>
+          <div class="form-group">
+            <label for="part-email" class="form-label">E-mail (opcional)</label>
+            <input type="email" id="part-email" class="form-control" placeholder="seuemail@exemplo.com">
+          </div>
+
+          <button type="submit" id="btn-submeter-reserva" class="btn-primary-block">
+            AVANÇAR PARA PAGAMENTO PIX
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Pagamento PIX e Upload do Comprovante -->
+  <div id="modal-pagamento" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-pag-titulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-pag-titulo" class="modal-title">Pagamento PIX da Rifa</h3>
+        <button type="button" class="modal-close" onclick="fecharModal('modal-pagamento')" aria-label="Fechar">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Contador Regressivo de 15 Minutos -->
+        <div class="countdown-box">
+          <div class="countdown-title">Tempo Restante para Concluir</div>
+          <div class="countdown-clock" id="countdown-timer">15:00</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">
+            Seus números estão reservados temporariamente.
+          </div>
+        </div>
+
+        <!-- Dados do PIX -->
+        <div class="pix-card">
+          <div class="pix-header">
+            <div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Valor Total</div>
+              <div class="pix-total-badge" id="pix-valor-display">R$ 0,00</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Protocolo</div>
+              <div style="font-weight: 800; font-family: monospace; font-size: 0.95rem; color: var(--accent);" id="pix-protocolo-display"></div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.85rem; margin-top: 6px;">
+            <strong>Favorecido:</strong> <span id="pix-favorecido-display">Coffee Music Cafeteria</span><br>
+            <strong>Números:</strong> <span id="pix-numeros-display"></span>
+          </div>
+
+          <!-- QR Code PIX -->
+          <div class="qr-code-wrap">
+            <img id="pix-qrcode-img" class="qr-code-img" src="" alt="QR Code PIX">
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+              Aponte a câmera do aplicativo do seu banco
+            </div>
+          </div>
+
+          <!-- Chave PIX -->
+          <div style="margin-top: 10px;">
+            <label class="form-label" style="font-size: 0.75rem;">CHAVE PIX:</label>
+            <div class="pix-key-box">
+              <span id="pix-chave-texto" class="pix-key-text"></span>
+              <button type="button" class="btn-copy" onclick="copiarChavePix()">COPIAR</button>
+            </div>
+          </div>
+
+          <!-- Código Copia e Cola -->
+          <div style="margin-top: 10px;">
+            <label class="form-label" style="font-size: 0.75rem;">PIX COPIA E COLA:</label>
+            <div class="pix-key-box">
+              <span id="pix-copiacola-texto" class="pix-key-text" style="font-size: 0.75rem; max-height: 40px; overflow: hidden;"></span>
+              <button type="button" class="btn-copy" onclick="copiarPixCopiaECola()">COPIAR CÓDIGO</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Área de Upload de Comprovante -->
+        <form id="form-comprovante" onsubmit="enviarComprovante(event)">
+          <label class="form-label">Enviar Comprovante de Pagamento *</label>
+          <div class="upload-area" id="upload-drop-zone" onclick="document.getElementById('input-comprovante').click()">
+            <div class="upload-icon">📄</div>
+            <div style="font-weight: 700; font-size: 0.95rem;">Clique ou arraste o comprovante aqui</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Formatos aceitos: JPG, PNG ou PDF (máx. 8MB)</div>
+            <div id="preview-nome-arquivo" class="file-name-preview"></div>
+          </div>
+          <input type="file" id="input-comprovante" style="display: none;" accept="image/jpeg,image/png,application/pdf" onchange="selecionarArquivoComprovante(this)">
+
+          <button type="submit" id="btn-enviar-comp" class="btn-primary-block" disabled>
+            ENVIAR COMPROVANTE PARA VALIDAÇÃO
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Confirmação e Sucesso -->
+  <div id="modal-sucesso" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">🎉 Participação Recebida!</h3>
+        <button type="button" class="modal-close" onclick="fecharModal('modal-sucesso')">✕</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <div style="font-size: 54px; margin-bottom: 8px;">✅</div>
+        <h3 style="color: var(--primary); font-size: 1.35rem; font-weight: 900;">Comprovante Enviado!</h3>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 4px;">
+          Seu pagamento está aguardando validação pela equipe da Coffee Music.
+        </p>
+
+        <div style="background: #fbf8f3; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; margin: 18px 0; text-align: left;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Protocolo de Identificação</div>
+          <div id="sucesso-protocolo" style="font-size: 1.3rem; font-weight: 900; color: var(--primary); font-family: monospace;"></div>
+          <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 10px 0;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 4px;">
+            <span>Números:</span> <strong id="sucesso-numeros"></strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 4px;">
+            <span>Valor:</span> <strong id="sucesso-valor"></strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.88rem;">
+            <span>Status:</span> <span style="background: var(--status-aguardando-bg); color: var(--status-aguardando); font-weight: 700; padding: 2px 8px; border-radius: 4px;">Aguardando validação</span>
+          </div>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+          Guarde o código de protocolo para consultar o andamento da sua rifa a qualquer momento.
+        </p>
+
+        <a id="btn-whatsapp-notif" href="#" target="_blank" class="btn-whatsapp-block">
+          <span>💬</span> FALAR COM A COFFEE MUSIC
+        </a>
+
+        <button type="button" class="btn-primary-block" style="background: #eada7; color: var(--primary); margin-top: 10px;" onclick="fecharModal('modal-sucesso')">
+          CONCLUIR E FECHAR
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: Consulta de Participação -->
+  <div id="modal-consulta" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Consultar Participação</h3>
+        <button type="button" class="modal-close" onclick="fecharModal('modal-consulta')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 14px;">
+          Informe o código de protocolo gerado no momento da sua reserva para checar o status.
+        </p>
+        <div class="protocol-search-box">
+          <input type="text" id="input-busca-protocolo" class="form-control" placeholder="Ex: CM-2026-A7F9K2" style="text-transform: uppercase;">
+          <button type="button" class="btn-continue" style="padding: 10px 18px;" onclick="buscarProtocolo()">Buscar</button>
+        </div>
+
+        <div id="resultado-consulta" class="protocol-result-card">
+          <!-- Preenchido via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contêiner de Notificações Toast -->
+  <div id="toast-container" class="toast-container" aria-live="assertive"></div>
+
+  <?!= include('scripts'); ?>
+</body>
+</html>

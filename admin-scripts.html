@@ -1,0 +1,374 @@
+<script>
+/**
+ * admin-scripts.html - Lógica do painel de administração da Rifa Coberta
+ */
+
+var adminToken = sessionStorage.getItem('cm_admin_token') || '';
+var rejeicaoAlvo = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (adminToken) {
+    document.getElementById('admin-pin-input').value = adminToken;
+    carregarDashboard();
+  }
+});
+
+function autenticarAdmin(e) {
+  if (e) e.preventDefault();
+  var pin = document.getElementById('admin-pin-input').value.trim();
+  if (!pin) {
+    showToast('Informe o PIN administrativo.', 'warning');
+    return;
+  }
+
+  adminToken = pin;
+  var btn = document.getElementById('btn-login-submit');
+  btn.disabled = true;
+  btn.textContent = 'Autenticando...';
+
+  carregarDashboard(function(success) {
+    btn.disabled = false;
+    btn.textContent = 'ACESSAR PAINEL';
+    if (success) {
+      sessionStorage.setItem('cm_admin_token', adminToken);
+    }
+  });
+}
+
+function fazerLogout() {
+  sessionStorage.removeItem('cm_admin_token');
+  adminToken = '';
+  document.getElementById('secao-login').style.display = 'block';
+  document.getElementById('secao-dashboard').style.display = 'none';
+  document.getElementById('btn-logout').style.display = 'none';
+  document.getElementById('admin-pin-input').value = '';
+}
+
+function carregarDashboard(callback) {
+  if (isAppsScript()) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          exibirDashboard(res);
+          if (callback) callback(true);
+        } else if (res && res.unauthorized) {
+          showToast(res.message, 'error');
+          document.getElementById('secao-login').style.display = 'block';
+          document.getElementById('secao-dashboard').style.display = 'none';
+          document.getElementById('btn-logout').style.display = 'none';
+          if (callback) callback(false);
+        } else {
+          showToast('Erro: ' + (res ? res.message : 'Falha desconhecida'), 'error');
+          if (callback) callback(false);
+        }
+      })
+      .withFailureHandler(function(err) {
+        showToast('Erro no servidor: ' + err.message, 'error');
+        if (callback) callback(false);
+      })
+      .getAdminDashboard(adminToken);
+  } else {
+    // Simulação local
+    setTimeout(function() {
+      exibirDashboard(getMockAdminDashboard());
+      if (callback) callback(true);
+    }, 400);
+  }
+}
+
+function exibirDashboard(data) {
+  document.getElementById('secao-login').style.display = 'none';
+  document.getElementById('secao-dashboard').style.display = 'block';
+  document.getElementById('btn-logout').style.display = 'inline-flex';
+
+  // 1. Atualiza métricas
+  var sf = data.statsFormatado || {};
+  document.getElementById('dash-total').textContent = sf.total || 500;
+  document.getElementById('dash-disp').textContent = sf.disponiveis || 0;
+  document.getElementById('dash-res').textContent = sf.reservados || 0;
+  document.getElementById('dash-val').textContent = sf.aguardando || 0;
+  document.getElementById('dash-conf').textContent = sf.confirmados || 0;
+
+  document.getElementById('dash-valor-confirmado').textContent = sf.valorConfirmado || 'R$ 0,00';
+  document.getElementById('dash-valor-pendente').textContent = sf.valorAguardando || 'R$ 0,00';
+
+  var perc = Math.round(((data.stats.confirmados || 0) / (data.stats.total || 500)) * 100);
+  var elTaxa = document.getElementById('taxa-conversao');
+  if (elTaxa) elTaxa.textContent = perc + '%';
+
+  // 2. Renderiza tabela de pagamentos pendentes
+  renderizarTabelaPendentes(data.pendentes || []);
+
+  // 3. Preenche formulário de configurações
+  preencherFormConfigs(data.configuracoes);
+
+  // 4. Renderiza logs
+  renderizarLogs(data.logs || []);
+}
+
+function renderizarTabelaPendentes(lista) {
+  var tbody = document.getElementById('tbody-pendentes');
+  var badge = document.getElementById('badge-pendentes-count');
+  badge.textContent = lista.length;
+
+  if (lista.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 28px;">Nenhum pagamento aguardando validação no momento. 🎉</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = '';
+  lista.forEach(function(item) {
+    var tr = document.createElement('tr');
+
+    var zapLink = item.whatsappLimpo ? 'https://wa.me/' + (item.whatsappLimpo.startsWith('55') ? item.whatsappLimpo : '55' + item.whatsappLimpo) : '#';
+    var numerosTexto = item.numeros.join(', ');
+
+    tr.innerHTML = 
+      '<td><strong>' + item.reservaId + '</strong></td>' +
+      '<td>' + item.nome + '</td>' +
+      '<td><a href="' + zapLink + '" target="_blank" style="color: #25d366; text-decoration: none; font-weight: 700;">' + item.whatsapp + ' 💬</a></td>' +
+      '<td><span class="badge-numbers">' + numerosTexto + '</span> (' + item.quantidade + ' pts)</td>' +
+      '<td><strong>' + item.valorFormatado + '</strong></td>' +
+      '<td>' + item.dataEnvioFormatada + '</td>' +
+      '<td><a href="' + item.comprovanteUrl + '" target="_blank" class="btn-action view-file">👁️ Ver Arquivo</a></td>' +
+      '<td>' +
+        '<div style="display: flex; gap: 6px;">' +
+          '<button type="button" class="btn-action approve" onclick="iniciarAprovacao(\'' + item.pagamentoId + '\', \'' + item.reservaId + '\', \'' + numerosTexto + '\')">✓ Aprovar</button>' +
+          '<button type="button" class="btn-action reject" onclick="abrirModalRejeicao(\'' + item.pagamentoId + '\', \'' + item.reservaId + '\', \'' + numerosTexto + '\')">✕ Rejeitar</button>' +
+        '</div>' +
+      '</td>';
+
+    tbody.appendChild(tr);
+  });
+}
+
+function iniciarAprovacao(pagamentoId, reservaId, numerosTexto) {
+  var confirma = confirm('Deseja realmente confirmar o pagamento e os números ' + numerosTexto + '?');
+  if (!confirma) return;
+
+  if (isAppsScript()) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          carregarDashboard();
+        } else {
+          showToast(res ? res.message : 'Erro ao aprovar.', 'error');
+        }
+      })
+      .withFailureHandler(function(err) {
+        showToast('Erro no servidor: ' + err.message, 'error');
+      })
+      .aprovarPagamento(adminToken, pagamentoId, reservaId);
+  } else {
+    showToast('Pagamento aprovado com sucesso! (Modo local)', 'success');
+    carregarDashboard();
+  }
+}
+
+function abrirModalRejeicao(pagamentoId, reservaId, numerosTexto) {
+  rejeicaoAlvo = { pagamentoId: pagamentoId, reservaId: reservaId };
+  document.getElementById('rej-protocolo-display').textContent = reservaId;
+  document.getElementById('rej-numeros-display').textContent = numerosTexto;
+  abrirModal('modal-rejeitar');
+}
+
+function confirmarRejeicao(e) {
+  e.preventDefault();
+  if (!rejeicaoAlvo) return;
+
+  var motivo = document.getElementById('rej-motivo').value;
+  var acao = document.querySelector('input[name="rej-acao"]:checked').value;
+  var btn = document.getElementById('btn-confirmar-rej');
+
+  btn.disabled = true;
+  btn.textContent = 'Processando...';
+
+  if (isAppsScript()) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.textContent = 'CONFIRMAR REJEIÇÃO';
+        fecharModal('modal-rejeitar');
+
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          carregarDashboard();
+        } else {
+          showToast(res ? res.message : 'Falha ao rejeitar.', 'error');
+        }
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.textContent = 'CONFIRMAR REJEIÇÃO';
+        showToast('Erro no servidor: ' + err.message, 'error');
+      })
+      .rejeitarPagamento(adminToken, rejeicaoAlvo.pagamentoId, rejeicaoAlvo.reservaId, motivo, acao);
+  } else {
+    btn.disabled = false;
+    btn.textContent = 'CONFIRMAR REJEIÇÃO';
+    fecharModal('modal-rejeitar');
+    showToast('Pagamento rejeitado e números atualizados! (Modo local)', 'success');
+    carregarDashboard();
+  }
+}
+
+function preencherFormConfigs(cfg) {
+  if (!cfg) return;
+  document.getElementById('cfg-chave-pix').value = cfg.chavePix || '';
+  document.getElementById('cfg-favorecido').value = cfg.nomeFavorecido || '';
+  document.getElementById('cfg-cidade').value = cfg.cidadePix || '';
+  document.getElementById('cfg-whatsapp').value = cfg.whatsappContato || '';
+  document.getElementById('cfg-valor-unit').value = cfg.valorNumero || 20;
+  document.getElementById('cfg-tempo-reserva').value = cfg.tempoReservaMinutos || 15;
+}
+
+function salvarConfiguracoes(e) {
+  e.preventDefault();
+  var payload = {
+    chavePix: document.getElementById('cfg-chave-pix').value.trim(),
+    nomeFavorecido: document.getElementById('cfg-favorecido').value.trim(),
+    cidadePix: document.getElementById('cfg-cidade').value.trim(),
+    whatsappContato: document.getElementById('cfg-whatsapp').value.trim(),
+    valorNumero: document.getElementById('cfg-valor-unit').value,
+    tempoReservaMinutos: document.getElementById('cfg-tempo-reserva').value,
+    adminPin: document.getElementById('cfg-admin-pin').value.trim()
+  };
+
+  var btn = document.getElementById('btn-salvar-cfg');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  if (isAppsScript()) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.textContent = 'SALVAR ALTERAÇÕES';
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          if (payload.adminPin) {
+            adminToken = payload.adminPin;
+            sessionStorage.setItem('cm_admin_token', adminToken);
+            document.getElementById('cfg-admin-pin').value = '';
+          }
+          carregarDashboard();
+        } else {
+          showToast(res ? res.message : 'Falha ao salvar.', 'error');
+        }
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.textContent = 'SALVAR ALTERAÇÕES';
+        showToast('Erro no servidor: ' + err.message, 'error');
+      })
+      .salvarConfiguracoesAdmin(adminToken, payload);
+  } else {
+    btn.disabled = false;
+    btn.textContent = 'SALVAR ALTERAÇÕES';
+    showToast('Configurações salvas! (Modo local)', 'success');
+  }
+}
+
+function renderizarLogs(logs) {
+  var tbody = document.getElementById('tbody-logs');
+  if (!tbody) return;
+
+  if (logs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum log registrado.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = '';
+  logs.forEach(function(l) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = 
+      '<td style="white-space: nowrap;">' + l.dataHora + '</td>' +
+      '<td><strong>' + l.acao + '</strong></td>' +
+      '<td>' + l.usuario + '</td>' +
+      '<td style="font-size: 0.82rem; font-family: monospace;">' + (typeof l.detalhes === 'object' ? JSON.stringify(l.detalhes) : l.detalhes) + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function executarLimpezaExpirados() {
+  if (isAppsScript()) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        showToast(res.message, 'success');
+        carregarDashboard();
+      })
+      .executarLimpezaManual(adminToken);
+  } else {
+    showToast('Limpeza de reservas expiradas executada com sucesso!', 'success');
+  }
+}
+
+function trocarTab(tabId) {
+  document.querySelectorAll('.admin-tab-btn').forEach(function(btn) {
+    btn.classList.remove('active');
+  });
+  document.querySelectorAll('.admin-tab-content').forEach(function(content) {
+    content.style.display = 'none';
+  });
+
+  var alvo = document.getElementById(tabId);
+  if (alvo) alvo.style.display = 'block';
+
+  // Marca botão ativo
+  var botoes = document.querySelectorAll('.admin-tab-btn');
+  botoes.forEach(function(b) {
+    if (b.getAttribute('onclick').indexOf(tabId) !== -1) {
+      b.classList.add('active');
+    }
+  });
+}
+
+/**
+ * Mock para testes locais do Admin
+ */
+function getMockAdminDashboard() {
+  return {
+    success: true,
+    usuarioLogado: 'ADMIN_PIN',
+    stats: { total: 500, disponiveis: 494, reservados: 2, aguardando: 2, confirmados: 2 },
+    statsFormatado: {
+      total: 500,
+      disponiveis: 494,
+      reservados: 2,
+      aguardando: 2,
+      confirmados: 2,
+      valorConfirmado: 'R$ 40,00',
+      valorAguardando: 'R$ 60,00'
+    },
+    pendentes: [
+      {
+        pagamentoId: 'PAG-001',
+        reservaId: 'CM-2026-X8Y4Z2',
+        participanteId: 'PART-001',
+        nome: 'João da Silva',
+        whatsapp: '(85) 99999-9999',
+        whatsappLimpo: '85999999999',
+        email: 'joao@email.com',
+        numeros: ['023', '116', '387'],
+        quantidade: 3,
+        valor: 60,
+        valorFormatado: 'R$ 60,00',
+        comprovanteUrl: 'https://drive.google.com',
+        dataEnvioFormatada: '05/10/2026 20:30'
+      }
+    ],
+    logs: [
+      { dataHora: '05/10/2026 20:30:15', acao: 'COMPROVANTE_ENVIADO', usuario: 'João da Silva', detalhes: 'Protocolo CM-2026-X8Y4Z2' },
+      { dataHora: '05/10/2026 20:25:00', acao: 'RESERVA_CRIADA', usuario: 'João da Silva', detalhes: '3 números reservados' }
+    ],
+    configuracoes: {
+      chavePix: 'coffeemusic.rifa@gmail.com',
+      nomeFavorecido: 'Coffee Music Cafeteria',
+      cidadePix: 'Beberibe',
+      whatsappContato: '5585999998888',
+      valorNumero: 20,
+      tempoReservaMinutos: 15
+    }
+  };
+}
+</script>

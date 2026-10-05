@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>[Preview Local] Rifa Coberta | Coffee Music Cafeteria</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Estilos Embutidos para Teste Local Imediato -->
+  <style>
+    /* Inclusão de styles.html */
+    :root {
+      --primary: #3b2314;
+      --primary-light: #523420;
+      --primary-dark: #24140b;
+      --accent: #d49a37;
+      --accent-hover: #b87b1e;
+      --accent-light: #faeacc;
+      --bg-page: #f9f5ef;
+      --bg-card: #ffffff;
+      --text-main: #271a11;
+      --text-muted: #6b5c50;
+      --border-color: #e5dacd;
+      --border-light: #efe8dc;
+      
+      --status-disponivel: #1e7e4e;
+      --status-disponivel-bg: #eaf6ee;
+      --status-disponivel-border: #9edcb6;
+      
+      --status-reservado: #b87700;
+      --status-reservado-bg: #fdf5e2;
+      --status-reservado-border: #f8db9c;
+      
+      --status-aguardando: #d4631d;
+      --status-aguardando-bg: #fef0e7;
+      --status-aguardando-border: #f9cca9;
+      
+      --status-confirmado: #992323;
+      --status-confirmado-bg: #fce8e8;
+      --status-confirmado-border: #f3aaaa;
+
+      --status-selecionado: #3b2314;
+      --status-selecionado-bg: #d49a37;
+      --status-selecionado-text: #ffffff;
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --shadow-sm: 0 2px 6px rgba(59, 35, 20, 0.06);
+      --shadow-md: 0 6px 18px rgba(59, 35, 20, 0.08);
+      --shadow-lg: 0 14px 32px rgba(59, 35, 20, 0.12);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding-bottom: 120px;
+      min-height: 100vh;
+    }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+
+    .site-header {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+      color: #ffffff;
+      padding: 24px 0 20px;
+      box-shadow: var(--shadow-md);
+      border-bottom: 3px solid var(--accent);
+    }
+    .header-content { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .logo-area { display: flex; align-items: center; gap: 14px; }
+    .coffee-icon-badge {
+      background: var(--accent);
+      color: var(--primary-dark);
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 4px 10px rgba(212, 154, 55, 0.35);
+    }
+    .brand-title { font-size: 1.35rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #ffffff; line-height: 1.2; }
+    .brand-subtitle { font-size: 0.85rem; color: var(--accent-light); letter-spacing: 1px; font-weight: 500; }
+
+    .btn-outline-header {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-outline-header:hover { background: var(--accent); color: var(--primary-dark); border-color: var(--accent); }
+
+    .hero-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      margin-top: 24px;
+      padding: 28px 24px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-color);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 6px;
+      background: linear-gradient(90deg, var(--accent) 0%, #e8a93e 50%, var(--primary) 100%);
+    }
+    .hero-tag {
+      display: inline-block;
+      background: var(--accent-light);
+      color: var(--primary-dark);
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .hero-title { font-size: 2rem; font-weight: 900; color: var(--primary); line-height: 1.2; margin-bottom: 8px; }
+    .hero-prize {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: #fbf8f3;
+      padding: 16px;
+      border-radius: var(--radius-md);
+      border-left: 4px solid var(--accent);
+      margin: 16px 0;
+    }
+    .prize-icon { font-size: 28px; }
+    .prize-text h3 { font-size: 1.15rem; color: var(--primary); font-weight: 800; }
+    .prize-text p { font-size: 0.95rem; color: var(--text-muted); }
+
+    .hero-details-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-light);
+    }
+    .detail-pill { display: flex; flex-direction: column; }
+    .detail-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+    .detail-value { font-size: 1.25rem; color: var(--primary-dark); font-weight: 800; }
+    .detail-value.highlight { color: #b87700; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      padding: 14px 10px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-card.stat-disp { border-top: 4px solid var(--status-disponivel); }
+    .stat-card.stat-res { border-top: 4px solid var(--status-reservado); }
+    .stat-card.stat-val { border-top: 4px solid var(--status-aguardando); }
+    .stat-card.stat-conf { border-top: 4px solid var(--status-confirmado); }
+    .stat-number { font-size: 1.5rem; font-weight: 800; line-height: 1.2; color: var(--primary); }
+    .stat-title { font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 4px; }
+
+    .grid-controls {
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-top: 20px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+    }
+    .legend-items { display: flex; flex-wrap: wrap; gap: 14px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+    .legend-dot { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0, 0, 0, 0.15); }
+    .legend-dot.disp { background: var(--status-disponivel); }
+    .legend-dot.res { background: var(--status-reservado); }
+    .legend-dot.val { background: var(--status-aguardando); }
+    .legend-dot.conf { background: var(--status-confirmado); }
+
+    .filter-input-wrap { position: relative; min-width: 180px; }
+    .filter-input {
+      width: 100%;
+      padding: 8px 12px 8px 32px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .filter-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text-muted); }
+
+    .numbers-section { margin-top: 20px; }
+    .section-title-wrap { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .section-title { font-size: 1.15rem; font-weight: 800; color: var(--primary); }
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--status-disponivel);
+      background: var(--status-disponivel-bg);
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+    .pulse-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--status-disponivel);
+      box-shadow: 0 0 0 0 rgba(30, 126, 78, 0.7);
+      animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(30, 126, 78, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(30, 126, 78, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(30, 126, 78, 0); }
+    }
+
+    .numbers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+      gap: 8px;
+      background: var(--bg-card);
+      padding: 16px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+    }
+    .num-card {
+      height: 52px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+      user-select: none;
+      position: relative;
+    }
+    .num-card.status-DISPONIVEL {
+      background-color: var(--status-disponivel-bg);
+      color: var(--status-disponivel);
+      border-color: var(--status-disponivel-border);
+    }
+    .num-card.status-DISPONIVEL:hover { transform: translateY(-2px); border-color: var(--status-disponivel); }
+    .num-card.selected {
+      background-color: var(--status-selecionado-bg) !important;
+      color: #ffffff !important;
+      border-color: var(--primary) !important;
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 6px 14px rgba(212, 154, 55, 0.45);
+      z-index: 2;
+    }
+    .num-card.selected::after {
+      content: "✓";
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      font-size: 9px;
+      font-weight: bold;
+      color: #ffffff;
+    }
+    .num-card.status-RESERVADO {
+      background-color: var(--status-reservado-bg);
+      color: var(--status-reservado);
+      border-color: var(--status-reservado-border);
+      cursor: not-allowed;
+      opacity: 0.9;
+    }
+    .num-card.status-AGUARDANDO_VALIDACAO {
+      background-color: var(--status-aguardando-bg);
+      color: var(--status-aguardando);
+      border-color: var(--status-aguardando-border);
+      cursor: not-allowed;
+      opacity: 0.85;
+    }
+    .num-card.status-CONFIRMADO {
+      background-color: var(--status-confirmado-bg);
+      color: var(--status-confirmado);
+      border-color: var(--status-confirmado-border);
+      cursor: not-allowed;
+      opacity: 0.7;
+      text-decoration: line-through;
+    }
+
+    .selection-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #ffffff;
+      border-top: 2px solid var(--accent);
+      box-shadow: 0 -8px 24px rgba(39, 26, 17, 0.15);
+      padding: 14px 16px;
+      z-index: 100;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: translateY(110%);
+    }
+    .selection-bar.active { transform: translateY(0); }
+    .bar-container { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .bar-info { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .bar-badge { background: var(--primary); color: #ffffff; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 700; }
+    .bar-numbers-list { font-size: 0.85rem; color: var(--text-muted); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bar-total { display: flex; flex-direction: column; }
+    .bar-total-label { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+    .bar-total-val { font-size: 1.35rem; font-weight: 900; color: var(--primary-dark); }
+    .btn-continue {
+      background: linear-gradient(135deg, var(--accent) 0%, #b87b1e 100%);
+      color: #ffffff; border: none; padding: 14px 28px; border-radius: var(--radius-md); font-size: 1rem; font-weight: 800; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(212, 154, 55, 0.4); transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;
+    }
+    .btn-continue:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(212, 154, 55, 0.5); }
+
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(36, 20, 11, 0.7); backdrop-filter: blur(4px);
+      z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--bg-card); width: 100%; max-width: 520px; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); overflow: hidden; position: relative; max-height: 90vh; display: flex; flex-direction: column;
+    }
+    .modal-header { background: var(--primary); color: #ffffff; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--accent); }
+    .modal-title { font-size: 1.15rem; font-weight: 800; }
+    .modal-close { background: transparent; border: none; color: #ffffff; font-size: 22px; cursor: pointer; }
+    .modal-body { padding: 20px; overflow-y: auto; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+    .form-control { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.95rem; outline: none; }
+    .form-control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(212, 154, 55, 0.15); }
+    .countdown-box { background: #fbf5eb; border: 1.5px dashed var(--accent); border-radius: var(--radius-md); padding: 14px; text-align: center; margin-bottom: 18px; }
+    .countdown-title { font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase; }
+    .countdown-clock { font-size: 2rem; font-weight: 900; color: #b87700; letter-spacing: 2px; margin: 4px 0; }
+    .pix-card { background: #fdfaf4; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px; margin-bottom: 18px; }
+    .pix-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .pix-total-badge { font-size: 1.25rem; font-weight: 900; color: var(--primary); }
+    .qr-code-wrap { text-align: center; margin: 14px 0; }
+    .qr-code-img { max-width: 200px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: #ffffff; padding: 6px; }
+    .pix-key-box { background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+    .pix-key-text { font-family: monospace; font-size: 0.88rem; font-weight: 700; color: var(--primary-dark); word-break: break-all; }
+    .btn-copy { background: var(--accent); color: var(--primary-dark); border: none; padding: 8px 14px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+    .btn-copy:hover { background: var(--accent-hover); color: #ffffff; }
+    .upload-area { border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 24px 16px; text-align: center; background: #fbf9f6; cursor: pointer; margin-top: 14px; }
+    .upload-area:hover { border-color: var(--accent); background: #fdf6ec; }
+    .upload-icon { font-size: 32px; color: var(--accent); margin-bottom: 6px; }
+    .file-name-preview { margin-top: 10px; font-size: 0.85rem; font-weight: 600; color: var(--status-disponivel); }
+    .btn-primary-block { width: 100%; background: var(--primary); color: #ffffff; border: none; padding: 14px; border-radius: var(--radius-md); font-size: 1rem; font-weight: 800; cursor: pointer; margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-primary-block:hover { background: var(--primary-light); }
+    .btn-whatsapp-block { width: 100%; background: #25d366; color: #ffffff; border: none; padding: 14px; border-radius: var(--radius-md); font-size: 1rem; font-weight: 800; cursor: pointer; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
+    .toast-container { position: fixed; top: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+    .toast { background: #ffffff; color: var(--text-main); padding: 14px 18px; border-radius: var(--radius-md); box-shadow: var(--shadow-lg); border-left: 5px solid var(--accent); font-size: 0.9rem; font-weight: 600; pointer-events: auto; max-width: 360px; }
+    .toast.success { border-left-color: var(--status-disponivel); }
+    .toast.error { border-left-color: var(--status-confirmado); }
+    .toast.warning { border-left-color: var(--status-reservado); }
+    .protocol-search-box { display: flex; gap: 8px; margin-bottom: 16px; }
+    .protocol-result-card { background: #fbf8f3; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; display: none; }
+
+    @media (max-width: 600px) {
+      .numbers-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 10px; }
+      .num-card { height: 48px; font-size: 0.85rem; }
+      .bar-container { flex-direction: column; align-items: stretch; gap: 10px; }
+      .btn-continue { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topo -->
+  <header class="site-header">
+    <div class="container header-content">
+      <div class="logo-area">
+        <div class="coffee-icon-badge">☕</div>
+        <div>
+          <h1 class="brand-title">Coffee Music</h1>
+          <span class="brand-subtitle">Cafeteria &amp; Experiências • Modo de Pré-visualização</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn-outline-header" onclick="openConsultarModal()">
+          🔍 Consultar Participação
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero-card">
+      <span class="hero-tag">🌴 Campanha Oficial</span>
+      <h2 class="hero-title">RIFA COBERTA</h2>
+      <p style="color: var(--text-muted); font-size: 1.05rem;">
+        Participe com a Coffee Music e concorra a momentos inesquecíveis no litoral cearense!
+      </p>
+
+      <div class="hero-prize">
+        <div class="prize-icon">🏖️</div>
+        <div class="prize-text">
+          <h3>Prêmio Exclusivo</h3>
+          <p>Final de semana em uma linda casa de praia em Beberibe/CE.</p>
+        </div>
+      </div>
+
+      <div class="hero-details-row">
+        <div class="detail-pill">
+          <span class="detail-label">Total de Pontos</span>
+          <span class="detail-value">500</span>
+        </div>
+        <div class="detail-pill">
+          <span class="detail-label">Valor por Ponto</span>
+          <span class="detail-value highlight">R$ 20,00</span>
+        </div>
+        <div class="detail-pill">
+          <span class="detail-label">Tempo de Reserva</span>
+          <span class="detail-value">15 minutos</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Resumo dos Números -->
+    <section class="stats-grid">
+      <div class="stat-card stat-disp">
+        <div class="stat-number" id="count-disponiveis">494</div>
+        <div class="stat-title">Disponíveis</div>
+      </div>
+      <div class="stat-card stat-res">
+        <div class="stat-number" id="count-reservados">2</div>
+        <div class="stat-title">Reservados</div>
+      </div>
+      <div class="stat-card stat-val">
+        <div class="stat-number" id="count-aguardando">2</div>
+        <div class="stat-title">Em Validação</div>
+      </div>
+      <div class="stat-card stat-conf">
+        <div class="stat-number" id="count-confirmados">2</div>
+        <div class="stat-title">Confirmados</div>
+      </div>
+    </section>
+
+    <!-- Controles -->
+    <section class="grid-controls">
+      <div class="legend-items">
+        <div class="legend-item"><span class="legend-dot disp"></span> Disponível</div>
+        <div class="legend-item"><span class="legend-dot res"></span> Reservado</div>
+        <div class="legend-item"><span class="legend-dot val"></span> Aguardando Validação</div>
+        <div class="legend-item"><span class="legend-dot conf"></span> Confirmado</div>
+      </div>
+      <div class="filter-input-wrap">
+        <span class="filter-icon">🔍</span>
+        <input type="text" id="filtro-numero" class="filter-input" placeholder="Buscar número..." maxlength="3" oninput="filtrarNumeros(this.value)">
+      </div>
+    </section>
+
+    <!-- Grade dos 500 Números -->
+    <section class="numbers-section">
+      <div class="section-title-wrap">
+        <h3 class="section-title">Escolha seus números da sorte (001 a 500):</h3>
+        <span class="live-badge">
+          <span class="pulse-dot"></span> Sincronização ao vivo
+        </span>
+      </div>
+      <div id="grade-numeros" class="numbers-grid"></div>
+    </section>
+  </main>
+
+  <!-- Barra Flutuante -->
+  <aside id="barra-selecao" class="selection-bar">
+    <div class="bar-container">
+      <div class="bar-info">
+        <span class="bar-badge" id="bar-qtd-selecionada">0 pontos</span>
+        <div class="bar-numbers-list" id="bar-lista-numeros">Nenhum número selecionado</div>
+        <div class="bar-total">
+          <span class="bar-total-label">Total a pagar</span>
+          <span class="bar-total-val" id="bar-valor-total">R$ 0,00</span>
+        </div>
+      </div>
+      <button type="button" class="btn-continue" onclick="abrirModalDados()">
+        <span>CONTINUAR</span> ➔
+      </button>
+    </div>
+  </aside>
+
+  <!-- Modais -->
+  <!-- MODAL 1: Dados do Participante -->
+  <div id="modal-dados" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Identificação do Participante</h3>
+        <button type="button" class="modal-close" onclick="fecharModal('modal-dados')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="background: #fbf8f3; padding: 12px; border-radius: var(--radius-sm); margin-bottom: 16px; border: 1px solid var(--border-color);">
+          <div style="font-size: 0.85rem; color: var(--text-muted);">Números selecionados:</div>
+          <div id="modal-resumo-numeros" style="font-weight: 800; font-size: 1.05rem; color: var(--primary);"></div>
+          <div style="display: flex; justify-content: space-between; margin-top: 6px; font-weight: 700; font-size: 0.9rem;">
+            <span id="modal-resumo-qtd"></span>
+            <span id="modal-resumo-total" style="color: #b87700;"></span>
+          </div>
+        </div>
+
+        <form onsubmit="submeterReservaSimulada(event)">
+          <div class="form-group">
+            <label class="form-label">Nome Completo *</label>
+            <input type="text" id="part-nome" class="form-control" placeholder="Ex: Maria Pereira" required minlength="3">
+          </div>
+          <div class="form-group">
+            <label class="form-label">WhatsApp com DDD *</label>
+            <input type="tel" id="part-whatsapp" class="form-control" placeholder="(85) 98888-7777" required oninput="mascaraWhatsApp(this)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">E-mail (opcional)</label>
+            <input type="email" id="part-email" class="form-control" placeholder="maria@exemplo.com">
+          </div>
+          <button type="submit" id="btn-submeter-reserva" class="btn-primary-block">
+            AVANÇAR PARA PAGAMENTO PIX
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Pagamento PIX e Upload -->
+  <div id="modal-pagamento" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Pagamento PIX da Rifa</h3>
+        <button type="button" class="modal-close" onclick="fecharModal('modal-pagamento')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="countdown-box">
+          <div class="countdown-title">Tempo Restante para Concluir</div>
+          <div class="countdown-clock" id="countdown-timer">15:00</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">
+            Seus números estão reservados temporariamente.
+          </div>
+        </div>
+
+        <div class="pix-card">
+          <div class="pix-header">
+            <div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Valor Total</div>
+              <div class="pix-total-badge" id="pix-valor-display">R$ 0,00</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Protocolo</div>
+              <div style="font-weight: 800; font-family: monospace; font-size: 0.95rem; color: var(--accent);" id="pix-protocolo-display">CM-2026-X8Y4Z2</div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.85rem; margin-top: 6px;">
+            <strong>Favorecido:</strong> <span>Coffee Music Cafeteria</span><br>
+            <strong>Números:</strong> <span id="pix-numeros-display"></span>
+          </div>
+
+          <div class="qr-code-wrap">
+            <img id="pix-qrcode-img" class="qr-code-img" src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=COFFEEMUSIC_RIFA_PIX" alt="QR Code PIX">
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+              Aponte a câmera do aplicativo do seu banco
+            </div>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <label class="form-label" style="font-size: 0.75rem;">CHAVE PIX:</label>
+            <div class="pix-key-box">
+              <span id="pix-chave-texto" class="pix-key-text">coffeemusic.rifa@gmail.com</span>
+              <button type="button" class="btn-copy" onclick="copiarChavePix()">COPIAR</button>
+            </div>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <label class="form-label" style="font-size: 0.75rem;">PIX COPIA E COLA:</label>
+            <div class="pix-key-box">
+              <span id="pix-copiacola-texto" class="pix-key-text" style="font-size: 0.75rem; max-height: 40px; overflow: hidden;">00020126580014br.gov.bcb.pix0126coffeemusic.rifa@gmail.com520400005303986540560.005802BR5922Coffee Music Cafeteria6008Beberibe62070503***6304D1A8</span>
+              <button type="button" class="btn-copy" onclick="copiarPixCopiaECola()">COPIAR CÓDIGO</button>
+            </div>
+          </div>
+        </div>
+
+        <form onsubmit="enviarComprovanteSimulado(event)">
+          <label class="form-label">Enviar Comprovante de Pagamento *</label>
+          <div class="upload-area" onclick="document.getElementById('input-comprovante').click()">
+            <div class="upload-icon">📄</div>
+            <div style="font-weight: 700; font-size: 0.95rem;">Clique ou arraste o comprovante aqui</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Formatos aceitos: JPG, PNG ou PDF (máx. 8MB)</div>
+            <div id="preview-nome-arquivo" class="file-name-preview"></div>
+          </div>
+          <input type="file" id="input-comprovante" style="display: none;" accept="image/jpeg,image/png,application/pdf" onchange="selecionarArquivo(this)">
+
+          <button type="submit" id="btn-enviar-comp" class="btn-primary-block" disabled>
+            ENVIAR COMPROVANTE PARA VALIDAÇÃO
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Confirmação e Sucesso -->
+  <div id="modal-sucesso" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">🎉 Participação Recebida!</h3>
+        <button type="button" class="modal-close" onclick="fecharModal('modal-sucesso')">✕</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <div style="font-size: 54px; margin-bottom: 8px;">✅</div>
+        <h3 style="color: var(--primary); font-size: 1.35rem; font-weight: 900;">Comprovante Enviado!</h3>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 4px;">
+          Seu pagamento está aguardando validação pela equipe da Coffee Music.
+        </p>
+
+        <div style="background: #fbf8f3; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; margin: 18px 0; text-align: left;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Protocolo de Identificação</div>
+          <div id="sucesso-protocolo" style="font-size: 1.3rem; font-weight: 900; color: var(--primary); font-family: monospace;">CM-2026-X8Y4Z2</div>
+          <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 10px 0;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 4px;">
+            <span>Números:</span> <strong id="sucesso-numeros"></strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 4px;">
+            <span>Valor:</span> <strong id="sucesso-valor"></strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.88rem;">
+            <span>Status:</span> <span style="background: var(--status-aguardando-bg); color: var(--status-aguardando); font-weight: 700; padding: 2px 8px; border-radius: 4px;">Aguardando validação</span>
+          </div>
+        </div>
+
+        <a id="btn-whatsapp-notif" href="#" target="_blank" class="btn-whatsapp-block">
+          <span>💬</span> FALAR COM A COFFEE MUSIC
+        </a>
+
+        <button type="button" class="btn-primary-block" style="background: #eada7; color: var(--primary); margin-top: 10px;" onclick="fecharModal('modal-sucesso')">
+          CONCLUIR E FECHAR
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: Consulta -->
+  <div id="modal-consulta" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Consultar Participação</h3>
+        <button type="button" class="modal-close" onclick="fecharModal('modal-consulta')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 14px;">
+          Informe o código de protocolo gerado no momento da sua reserva para checar o status.
+        </p>
+        <div class="protocol-search-box">
+          <input type="text" id="input-busca-protocolo" class="form-control" placeholder="Ex: CM-2026-X8Y4Z2" style="text-transform: uppercase;">
+          <button type="button" class="btn-continue" style="padding: 10px 18px;" onclick="buscarProtocoloSimulado()">Buscar</button>
+        </div>
+
+        <div id="resultado-consulta" class="protocol-result-card"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script>
+    var selectedNumbers = new Set();
+    var valorUnitario = 20.00;
+    var countdownInterval = null;
+    var protocoloAtual = 'CM-2026-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Gera 500 números
+      var grid = document.getElementById('grade-numeros');
+      var fragment = document.createDocumentFragment();
+
+      for (var i = 1; i <= 500; i++) {
+        var s = '00' + i;
+        var numStr = s.substr(s.length - 3);
+        var status = 'DISPONIVEL';
+
+        if (i === 23 || i === 116) status = 'RESERVADO';
+        if (i === 88 || i === 250) status = 'AGUARDANDO_VALIDACAO';
+        if (i === 10 || i === 77) status = 'CONFIRMADO';
+
+        var card = document.createElement('div');
+        card.id = 'num-' + numStr;
+        card.className = 'num-card status-' + status;
+        card.dataset.num = numStr;
+        card.dataset.status = status;
+        card.textContent = numStr;
+
+        (function(n, st) {
+          card.addEventListener('click', function() {
+            if (st !== 'DISPONIVEL') {
+              showToast('Número ' + n + ' não está disponível (' + st + ')', 'warning');
+              return;
+            }
+            if (selectedNumbers.has(n)) {
+              selectedNumbers.delete(n);
+              this.classList.remove('selected');
+            } else {
+              selectedNumbers.add(n);
+              this.classList.add('selected');
+            }
+            atualizarBarra();
+          });
+        })(numStr, status);
+
+        fragment.appendChild(card);
+      }
+
+      grid.appendChild(fragment);
+    });
+
+    function atualizarBarra() {
+      var bar = document.getElementById('barra-selecao');
+      var count = selectedNumbers.size;
+
+      if (count === 0) {
+        bar.classList.remove('active');
+        return;
+      }
+
+      bar.classList.add('active');
+      var sorted = Array.from(selectedNumbers).sort();
+      document.getElementById('bar-qtd-selecionada').textContent = count + ' ponto(s)';
+      document.getElementById('bar-lista-numeros').textContent = sorted.join(', ');
+      document.getElementById('bar-valor-total').textContent = formatMoeda(count * valorUnitario);
+    }
+
+    function abrirModalDados() {
+      if (selectedNumbers.size === 0) return;
+      var sorted = Array.from(selectedNumbers).sort();
+      document.getElementById('modal-resumo-numeros').textContent = sorted.join(', ');
+      document.getElementById('modal-resumo-qtd').textContent = selectedNumbers.size + ' ponto(s)';
+      document.getElementById('modal-resumo-total').textContent = 'Total: ' + formatMoeda(selectedNumbers.size * valorUnitario);
+      abrirModal('modal-dados');
+    }
+
+    function submeterReservaSimulada(e) {
+      e.preventDefault();
+      var btn = document.getElementById('btn-submeter-reserva');
+      btn.disabled = true;
+      btn.textContent = 'Verificando com LockService...';
+
+      setTimeout(function() {
+        btn.disabled = false;
+        btn.textContent = 'AVANÇAR PARA PAGAMENTO PIX';
+        fecharModal('modal-dados');
+
+        document.getElementById('pix-valor-display').textContent = formatMoeda(selectedNumbers.size * valorUnitario);
+        document.getElementById('pix-protocolo-display').textContent = protocoloAtual;
+        document.getElementById('pix-numeros-display').textContent = Array.from(selectedNumbers).sort().join(', ');
+
+        iniciarTimer(900);
+        abrirModal('modal-pagamento');
+        showToast('Números reservados por 15 minutos!', 'success');
+      }, 500);
+    }
+
+    function iniciarTimer(segundos) {
+      if (countdownInterval) clearInterval(countdownInterval);
+      var t = segundos;
+      var el = document.getElementById('countdown-timer');
+      countdownInterval = setInterval(function() {
+        var m = Math.floor(t / 60);
+        var s = t % 60;
+        el.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        if (t <= 0) {
+          clearInterval(countdownInterval);
+          showToast('Tempo expirado!', 'error');
+          fecharModal('modal-pagamento');
+        }
+        t--;
+      }, 1000);
+    }
+
+    function selecionarArquivo(input) {
+      if (input.files && input.files.length > 0) {
+        var f = input.files[0];
+        var p = document.getElementById('preview-nome-arquivo');
+        p.textContent = '✓ ' + f.name + ' (' + (f.size / 1024).toFixed(1) + ' KB)';
+        p.style.display = 'block';
+        document.getElementById('btn-enviar-comp').disabled = false;
+      }
+    }
+
+    function enviarComprovanteSimulado(e) {
+      e.preventDefault();
+      var btn = document.getElementById('btn-enviar-comp');
+      btn.disabled = true;
+      btn.textContent = 'Salvando no Google Drive...';
+
+      setTimeout(function() {
+        btn.disabled = false;
+        btn.textContent = 'ENVIAR COMPROVANTE PARA VALIDAÇÃO';
+        clearInterval(countdownInterval);
+        fecharModal('modal-pagamento');
+
+        document.getElementById('sucesso-protocolo').textContent = protocoloAtual;
+        document.getElementById('sucesso-numeros').textContent = Array.from(selectedNumbers).sort().join(', ');
+        document.getElementById('sucesso-valor').textContent = formatMoeda(selectedNumbers.size * valorUnitario);
+
+        var msgZap = encodeURIComponent('Olá! Participei da Rifa Coberta da Coffee Music.\nProtocolo: ' + protocoloAtual + '\nNúmeros: ' + Array.from(selectedNumbers).join(', ') + '\nValor: ' + formatMoeda(selectedNumbers.size * valorUnitario));
+        document.getElementById('btn-whatsapp-notif').href = 'https://api.whatsapp.com/send?phone=5585999998888&text=' + msgZap;
+
+        abrirModal('modal-sucesso');
+
+        selectedNumbers.forEach(function(n) {
+          var card = document.getElementById('num-' + n);
+          if (card) {
+            card.className = 'num-card status-AGUARDANDO_VALIDACAO';
+            card.dataset.status = 'AGUARDANDO_VALIDACAO';
+          }
+        });
+        selectedNumbers.clear();
+        atualizarBarra();
+      }, 700);
+    }
+
+    function buscarProtocoloSimulado() {
+      var proto = document.getElementById('input-busca-protocolo').value.trim();
+      var box = document.getElementById('resultado-consulta');
+      box.style.display = 'block';
+      box.innerHTML = 
+        '<div style="font-size: 0.8rem; color: var(--text-muted);">Protocolo: <strong>' + (proto || protocoloAtual) + '</strong></div>' +
+        '<div style="font-size: 0.95rem; margin: 4px 0;">Participante: <strong>Maria P.</strong></div>' +
+        '<div style="font-size: 0.95rem; margin: 4px 0;">Números: <strong>023, 116, 387</strong> (3 pontos)</div>' +
+        '<div style="font-size: 0.95rem; margin: 4px 0;">Valor: <strong>R$ 60,00</strong></div>' +
+        '<div style="margin-top: 8px;">Status: <span style="font-weight: 800; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; background: #fef0e7; color: #d4631d;">Comprovante em Análise</span></div>';
+    }
+
+    function copiarChavePix() {
+      var txt = document.getElementById('pix-chave-texto').textContent;
+      navigator.clipboard.writeText(txt).then(function() { showToast('Chave PIX copiada!', 'success'); });
+    }
+
+    function copiarPixCopiaECola() {
+      var txt = document.getElementById('pix-copiacola-texto').textContent;
+      navigator.clipboard.writeText(txt).then(function() { showToast('Código PIX copiado!', 'success'); });
+    }
+
+    function abrirModal(id) { document.getElementById(id).classList.add('active'); }
+    function fecharModal(id) { document.getElementById(id).classList.remove('active'); }
+    function openConsultarModal() { abrirModal('modal-consulta'); }
+
+    function formatMoeda(v) {
+      return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+    }
+
+    function mascaraWhatsApp(input) {
+      var v = input.value.replace(/\D/g, '');
+      if (v.length > 11) v = v.substring(0, 11);
+      if (v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+      else if (v.length > 5) v = v.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+      else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+      input.value = v;
+    }
+
+    function filtrarNumeros(termo) {
+      document.querySelectorAll('.num-card').forEach(function(c) {
+        c.style.display = (!termo || c.dataset.num.indexOf(termo) !== -1) ? '' : 'none';
+      });
+    }
+
+    function showToast(msg, type) {
+      var container = document.getElementById('toast-container');
+      var toast = document.createElement('div');
+      toast.className = 'toast ' + (type || 'info');
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 3500);
+    }
+  </script>
+</body>
+</html>

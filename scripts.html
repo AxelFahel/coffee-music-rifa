@@ -1,0 +1,723 @@
+<script>
+/**
+ * scripts.html - Frontend interativo da Rifa Coberta (Coffee Music)
+ */
+
+var selectedNumbers = new Set();
+var campanhaConfig = {
+  valorUnitario: 20.00,
+  totalPontos: 500,
+  tempoReservaMinutos: 15,
+  chavePix: '',
+  nomeFavorecido: '',
+  whatsappContato: ''
+};
+var currentReservation = null;
+var countdownInterval = null;
+var pollingTimer = null;
+var comprovanteData = null;
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+  carregarDadosIniciais();
+  configurarDragAndDrop();
+});
+
+/**
+ * Carrega a campanha e os 500 números do backend
+ */
+function carregarDadosIniciais() {
+  if (isAppsScript()) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          processarDadosIniciais(res);
+        } else {
+          showToast('Erro ao carregar dados: ' + (res ? res.message : 'Falha na conexão'), 'error');
+        }
+      })
+      .withFailureHandler(function(err) {
+        showToast('Erro de comunicação com o servidor: ' + err.message, 'error');
+      })
+      .getPublicData();
+  } else {
+    // Modo de demonstração / teste local no navegador
+    console.warn('Executando em modo de demonstração local.');
+    processarDadosIniciais(getMockInitialData());
+  }
+}
+
+function processarDadosIniciais(res) {
+  campanhaConfig = Object.assign(campanhaConfig, res.campanha);
+
+  // Atualiza hero
+  var elPremio = document.getElementById('hero-premio-desc');
+  if (elPremio && res.campanha.premio) elPremio.textContent = res.campanha.premio;
+
+  var elValorUnit = document.getElementById('hero-valor-unitario');
+  if (elValorUnit) elValorUnit.textContent = res.campanha.valorUnitarioFormatado;
+
+  var elTotalPts = document.getElementById('hero-total-pontos');
+  if (elTotalPts) elTotalPts.textContent = res.campanha.totalPontos;
+
+  // Atualiza contadores
+  atualizarContadores(res.resumo);
+
+  // Renderiza grade
+  renderizarGradeNumeros(res.numeros);
+
+  // Inicia sincronização em segundo plano a cada 12 segundos
+  if (pollingTimer) clearInterval(pollingTimer);
+  pollingTimer = setInterval(sincronizarStatusNumeros, 12000);
+}
+
+/**
+ * Renderiza os 500 cards de números
+ */
+function renderizarGradeNumeros(numeros) {
+  var grid = document.getElementById('grade-numeros');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+  var fragment = document.createDocumentFragment();
+
+  numeros.forEach(function(item) {
+    var card = document.createElement('div');
+    card.id = 'num-' + item.n;
+    card.className = 'num-card status-' + item.s;
+    card.dataset.num = item.n;
+    card.dataset.status = item.s;
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', item.s === 'DISPONIVEL' ? '0' : '-1');
+    card.setAttribute('aria-label', 'Número ' + item.n + ' - ' + item.s);
+    card.textContent = item.n;
+
+    card.addEventListener('click', function() {
+      toggleNumero(item.n);
+    });
+
+    card.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleNumero(item.n);
+      }
+    });
+
+    fragment.appendChild(card);
+  });
+
+  grid.appendChild(fragment);
+}
+
+/**
+ * Alterna a seleção de um número
+ */
+function toggleNumero(numStr) {
+  var card = document.getElementById('num-' + numStr);
+  if (!card) return;
+
+  var status = card.dataset.status;
+  if (status !== 'DISPONIVEL') {
+    if (status === 'RESERVADO') showToast('O número ' + numStr + ' está reservado no momento.', 'warning');
+    else if (status === 'AGUARDANDO_VALIDACAO') showToast('O número ' + numStr + ' está em validação de pagamento.', 'warning');
+    else if (status === 'CONFIRMADO') showToast('O número ' + numStr + ' já foi confirmado e vendido.', 'error');
+    return;
+  }
+
+  if (selectedNumbers.has(numStr)) {
+    selectedNumbers.delete(numStr);
+    card.classList.remove('selected');
+    card.setAttribute('aria-pressed', 'false');
+  } else {
+    selectedNumbers.add(numStr);
+    card.classList.add('selected');
+    card.setAttribute('aria-pressed', 'true');
+  }
+
+  atualizarBarraSelecao();
+}
+
+/**
+ * Atualiza o resumo da barra flutuante
+ */
+function atualizarBarraSelecao() {
+  var bar = document.getElementById('barra-selecao');
+  var count = selectedNumbers.size;
+
+  if (count === 0) {
+    bar.classList.remove('active');
+    return;
+  }
+
+  bar.classList.add('active');
+
+  var sortedNums = Array.from(selectedNumbers).sort(function(a, b) {
+    return parseInt(a, 10) - parseInt(b, 10);
+  });
+
+  document.getElementById('bar-qtd-selecionada').textContent = count + (count === 1 ? ' ponto' : ' pontos');
+  document.getElementById('bar-lista-numeros').textContent = sortedNums.join(', ');
+
+  var total = count * campanhaConfig.valorUnitario;
+  document.getElementById('bar-valor-total').textContent = formatMoeda(total);
+}
+
+/**
+ * Sincroniza periodicamente apenas o status alterado dos números
+ */
+function sincronizarStatusNumeros() {
+  if (isAppsScript()) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          atualizarStatusGrid(res);
+        }
+      })
+      .getNumerosStatus();
+  }
+}
+
+function atualizarStatusGrid(res) {
+  if (res.resumo) atualizarContadores(res.resumo);
+
+  if (res.numeros && Array.isArray(res.numeros)) {
+    res.numeros.forEach(function(item) {
+      var card = document.getElementById('num-' + item.n);
+      if (card && card.dataset.status !== item.s) {
+        card.dataset.status = item.s;
+        card.className = 'num-card status-' + item.s + (selectedNumbers.has(item.n) ? ' selected' : '');
+        card.setAttribute('aria-label', 'Número ' + item.n + ' - ' + item.s);
+
+        // Se o número selecionado foi tomado por outra pessoa, desmarca
+        if (selectedNumbers.has(item.n) && item.s !== 'DISPONIVEL') {
+          selectedNumbers.delete(item.n);
+          card.classList.remove('selected');
+          showToast('Atenção: O número ' + item.n + ' acabou de ser reservado por outro participante.', 'warning');
+          atualizarBarraSelecao();
+        }
+      }
+    });
+  }
+}
+
+function atualizarContadores(resumo) {
+  if (!resumo) return;
+  document.getElementById('count-disponiveis').textContent = resumo.disponiveis || 0;
+  document.getElementById('count-reservados').textContent = resumo.reservados || 0;
+  document.getElementById('count-aguardando').textContent = resumo.aguardando || 0;
+  document.getElementById('count-confirmados').textContent = resumo.confirmados || 0;
+}
+
+/**
+ * Filtragem de números no campo de busca
+ */
+function filtrarNumeros(query) {
+  var termo = query.trim();
+  var cards = document.querySelectorAll('.num-card');
+
+  cards.forEach(function(card) {
+    if (!termo || card.dataset.num.indexOf(termo) !== -1) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+/**
+ * Modal 1: Dados do Participante
+ */
+function abrirModalDados() {
+  if (selectedNumbers.size === 0) {
+    showToast('Selecione pelo menos um número da rifa.', 'warning');
+    return;
+  }
+
+  var sortedNums = Array.from(selectedNumbers).sort();
+  var count = selectedNumbers.size;
+  var total = count * campanhaConfig.valorUnitario;
+
+  document.getElementById('modal-resumo-numeros').textContent = sortedNums.join(', ');
+  document.getElementById('modal-resumo-qtd').textContent = count + ' ponto(s)';
+  document.getElementById('modal-resumo-total').textContent = 'Total: ' + formatMoeda(total);
+
+  abrirModal('modal-dados');
+  document.getElementById('part-nome').focus();
+}
+
+/**
+ * Submete a reserva ao Backend com verificação atômica de Lock
+ */
+function submeterReserva(e) {
+  e.preventDefault();
+
+  var nome = document.getElementById('part-nome').value.trim();
+  var whatsapp = document.getElementById('part-whatsapp').value.trim();
+  var email = document.getElementById('part-email').value.trim();
+
+  if (nome.length < 3) {
+    showToast('Informe seu nome completo.', 'warning');
+    return;
+  }
+  if (whatsapp.replace(/\D/g, '').length < 10) {
+    showToast('Informe um número de WhatsApp válido.', 'warning');
+    return;
+  }
+
+  var btn = document.getElementById('btn-submeter-reserva');
+  btn.disabled = true;
+  btn.textContent = 'Verificando disponibilidade...';
+
+  var dados = {
+    nome: nome,
+    whatsapp: whatsapp,
+    email: email,
+    numeros: Array.from(selectedNumbers)
+  };
+
+  if (isAppsScript()) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.textContent = 'AVANÇAR PARA PAGAMENTO PIX';
+
+        if (res && res.success) {
+          fecharModal('modal-dados');
+          iniciarFluxoPagamento(res.reserva);
+        } else if (res && res.code === 'UNAVAILABLE') {
+          showToast(res.message, 'error');
+          sincronizarStatusNumeros();
+        } else {
+          showToast(res ? res.message : 'Falha ao processar reserva.', 'error');
+        }
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.textContent = 'AVANÇAR PARA PAGAMENTO PIX';
+        showToast('Erro no servidor: ' + err.message, 'error');
+      })
+      .fazerReserva(dados);
+  } else {
+    // Simulação local
+    setTimeout(function() {
+      btn.disabled = false;
+      btn.textContent = 'AVANÇAR PARA PAGAMENTO PIX';
+      fecharModal('modal-dados');
+      var mockReserva = {
+        id: 'CM-2026-X8Y4Z2',
+        protocolo: 'CM-2026-X8Y4Z2',
+        participanteNome: nome,
+        whatsapp: whatsapp,
+        numeros: Array.from(selectedNumbers),
+        quantidade: selectedNumbers.size,
+        valorTotal: selectedNumbers.size * 20,
+        valorTotalFormatado: formatMoeda(selectedNumbers.size * 20),
+        tempoRestanteSegundos: 900,
+        pix: {
+          chave: 'coffeemusic.rifa@gmail.com',
+          tipoChave: 'EMAIL',
+          nomeFavorecido: 'Coffee Music Cafeteria',
+          cidade: 'Beberibe',
+          copiaECola: '00020126580014br.gov.bcb.pix0126coffeemusic.rifa@gmail.com5204000053039865405' + (selectedNumbers.size * 20) + '.005802BR5922Coffee Music Cafeteria6008Beberibe62070503***6304ABCD',
+          qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=COFFEEMUSIC'
+        }
+      };
+      iniciarFluxoPagamento(mockReserva);
+    }, 600);
+  }
+}
+
+/**
+ * Inicia a tela de PIX e o contador de 15 minutos
+ */
+function iniciarFluxoPagamento(reserva) {
+  currentReservation = reserva;
+
+  document.getElementById('pix-valor-display').textContent = reserva.valorTotalFormatado;
+  document.getElementById('pix-protocolo-display').textContent = reserva.protocolo;
+  document.getElementById('pix-favorecido-display').textContent = reserva.pix.nomeFavorecido;
+  document.getElementById('pix-numeros-display').textContent = reserva.numeros.join(', ');
+
+  document.getElementById('pix-chave-texto').textContent = reserva.pix.chave;
+  document.getElementById('pix-copiacola-texto').textContent = reserva.pix.copiaECola;
+  document.getElementById('pix-qrcode-img').src = reserva.pix.qrCodeUrl;
+
+  // Inicia contador regressivo
+  iniciarContadorRegressivo(reserva.tempoRestanteSegundos || 900);
+
+  // Reseta input de comprovante
+  document.getElementById('input-comprovante').value = '';
+  document.getElementById('preview-nome-arquivo').style.display = 'none';
+  document.getElementById('btn-enviar-comp').disabled = true;
+  comprovanteData = null;
+
+  abrirModal('modal-pagamento');
+}
+
+/**
+ * Contador Regressivo de 15 Minutos (14:59, 14:58...)
+ */
+function iniciarContadorRegressivo(segundos) {
+  if (countdownInterval) clearInterval(countdownInterval);
+
+  var tempo = segundos;
+  var display = document.getElementById('countdown-timer');
+
+  function update() {
+    var min = Math.floor(tempo / 60);
+    var sec = tempo % 60;
+    display.textContent = (min < 10 ? '0' : '') + min + ':' + (sec < 10 ? '0' : '') + sec;
+
+    if (tempo <= 0) {
+      clearInterval(countdownInterval);
+      showToast('O prazo de 15 minutos para esta reserva encerrou. Os números foram liberados.', 'error');
+      fecharModal('modal-pagamento');
+      selectedNumbers.clear();
+      atualizarBarraSelecao();
+      sincronizarStatusNumeros();
+    }
+    tempo--;
+  }
+
+  update();
+  countdownInterval = setInterval(update, 1000);
+}
+
+/**
+ * Cópia da chave PIX e do Copia e Cola
+ */
+function copiarChavePix() {
+  var texto = document.getElementById('pix-chave-texto').textContent;
+  copiarParaClipboard(texto, 'Chave PIX copiada com sucesso!');
+}
+
+function copiarPixCopiaECola() {
+  var texto = document.getElementById('pix-copiacola-texto').textContent;
+  copiarParaClipboard(texto, 'Código PIX Copia e Cola copiado!');
+}
+
+function copiarParaClipboard(texto, mensagemSucesso) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(texto).then(function() {
+      showToast(mensagemSucesso, 'success');
+    }).catch(function() {
+      fallbackCopyText(texto, mensagemSucesso);
+    });
+  } else {
+    fallbackCopyText(texto, mensagemSucesso);
+  }
+}
+
+function fallbackCopyText(texto, msg) {
+  var ta = document.createElement('textarea');
+  ta.value = texto;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  showToast(msg, 'success');
+}
+
+/**
+ * Seleção e Drag & Drop do Comprovante
+ */
+function configurarDragAndDrop() {
+  var zone = document.getElementById('upload-drop-zone');
+  if (!zone) return;
+
+  ['dragenter', 'dragover'].forEach(function(evt) {
+    zone.addEventListener(evt, function(e) {
+      e.preventDefault();
+      zone.classList.add('dragover');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(function(evt) {
+    zone.addEventListener(evt, function(e) {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+    });
+  });
+
+  zone.addEventListener('drop', function(e) {
+    var files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      processarArquivoComprovante(files[0]);
+    }
+  });
+}
+
+function selecionarArquivoComprovante(input) {
+  if (input.files && input.files.length > 0) {
+    processarArquivoComprovante(input.files[0]);
+  }
+}
+
+function processarArquivoComprovante(file) {
+  var permitidos = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+  if (permitidos.indexOf(file.type.toLowerCase()) === -1) {
+    showToast('Formato não suportado. Envie JPG, PNG ou PDF.', 'error');
+    return;
+  }
+
+  if (file.size > 8 * 1024 * 1024) {
+    showToast('O arquivo excede o limite máximo de 8MB.', 'error');
+    return;
+  }
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    comprovanteData = {
+      fileName: file.name,
+      mimeType: file.type,
+      base64Data: e.target.result
+    };
+
+    var prev = document.getElementById('preview-nome-arquivo');
+    prev.textContent = '✓ ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+    prev.style.display = 'block';
+
+    document.getElementById('btn-enviar-comp').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+/**
+ * Envia o comprovante para o Google Drive e atualiza o estado
+ */
+function enviarComprovante(e) {
+  e.preventDefault();
+  if (!comprovanteData || !currentReservation) {
+    showToast('Selecione o arquivo do comprovante primeiro.', 'warning');
+    return;
+  }
+
+  var btn = document.getElementById('btn-enviar-comp');
+  btn.disabled = true;
+  btn.textContent = 'Enviando ao Google Drive...';
+
+  var payload = {
+    reservaId: currentReservation.protocolo,
+    filePayload: comprovanteData
+  };
+
+  if (isAppsScript()) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        btn.textContent = 'ENVIAR COMPROVANTE PARA VALIDAÇÃO';
+
+        if (res && res.success) {
+          concluirEnvioComprovante(res);
+        } else {
+          showToast(res ? res.message : 'Falha no envio do comprovante.', 'error');
+        }
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.textContent = 'ENVIAR COMPROVANTE PARA VALIDAÇÃO';
+        showToast('Erro ao enviar: ' + err.message, 'error');
+      })
+      .confirmarEnvioComprovante(payload);
+  } else {
+    setTimeout(function() {
+      btn.disabled = false;
+      btn.textContent = 'ENVIAR COMPROVANTE PARA VALIDAÇÃO';
+      concluirEnvioComprovante({
+        protocolo: currentReservation.protocolo,
+        numeros: currentReservation.numeros,
+        valorTotalFormatado: currentReservation.valorTotalFormatado,
+        whatsappUrl: '#'
+      });
+    }, 800);
+  }
+}
+
+function concluirEnvioComprovante(res) {
+  if (countdownInterval) clearInterval(countdownInterval);
+  fecharModal('modal-pagamento');
+
+  // Preenche tela de sucesso
+  document.getElementById('sucesso-protocolo').textContent = res.protocolo;
+  document.getElementById('sucesso-numeros').textContent = res.numeros.join(', ');
+  document.getElementById('sucesso-valor').textContent = res.valorTotalFormatado;
+
+  var btnZap = document.getElementById('btn-whatsapp-notif');
+  if (btnZap && res.whatsappUrl) {
+    btnZap.href = res.whatsappUrl;
+  }
+
+  abrirModal('modal-sucesso');
+
+  // Limpa seleção do usuário
+  selectedNumbers.clear();
+  atualizarBarraSelecao();
+  sincronizarStatusNumeros();
+}
+
+/**
+ * Consulta de participação por protocolo
+ */
+function openConsultarModal() {
+  document.getElementById('resultado-consulta').style.display = 'none';
+  document.getElementById('input-busca-protocolo').value = '';
+  abrirModal('modal-consulta');
+}
+
+function buscarProtocolo() {
+  var proto = document.getElementById('input-busca-protocolo').value.trim();
+  if (!proto) {
+    showToast('Informe o código do protocolo.', 'warning');
+    return;
+  }
+
+  var resBox = document.getElementById('resultado-consulta');
+  resBox.style.display = 'block';
+  resBox.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 12px;">Consultando protocolo...</div>';
+
+  if (isAppsScript()) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        exibirResultadoProtocolo(res);
+      })
+      .withFailureHandler(function(err) {
+        resBox.innerHTML = '<div style="color: var(--status-confirmado); font-weight: 700;">Erro na consulta: ' + err.message + '</div>';
+      })
+      .consultarProtocolo(proto);
+  } else {
+    setTimeout(function() {
+      exibirResultadoProtocolo({
+        success: true,
+        dados: {
+          protocolo: proto,
+          participante: 'João S.',
+          numeros: ['023', '116', '387'],
+          quantidade: 3,
+          valorTotalFormatado: 'R$ 60,00',
+          status: 'AGUARDANDO_VALIDACAO',
+          dataReservaFormatada: '05/10/2026 20:30'
+        }
+      });
+    }, 400);
+  }
+}
+
+function exibirResultadoProtocolo(res) {
+  var resBox = document.getElementById('resultado-consulta');
+  if (!res || !res.success) {
+    resBox.innerHTML = '<div style="color: var(--status-confirmado); font-weight: 600;">' + (res ? res.message : 'Protocolo não encontrado.') + '</div>';
+    return;
+  }
+
+  var d = res.dados;
+  var badgeStyle = 'background: #eaf6ee; color: #1e7e4e;';
+  var statusNome = d.status;
+
+  if (d.status === 'RESERVADO') {
+    badgeStyle = 'background: #fdf5e2; color: #b87700;';
+    statusNome = 'Aguardando Pagamento';
+  } else if (d.status === 'AGUARDANDO_VALIDACAO') {
+    badgeStyle = 'background: #fef0e7; color: #d4631d;';
+    statusNome = 'Comprovante em Análise';
+  } else if (d.status === 'CONFIRMADO') {
+    badgeStyle = 'background: #eaf6ee; color: #1e7e4e;';
+    statusNome = 'Participação Confirmada ✓';
+  } else if (d.status === 'EXPIRADO') {
+    badgeStyle = 'background: #fce8e8; color: #992323;';
+    statusNome = 'Expirado';
+  }
+
+  resBox.innerHTML = 
+    '<div style="font-size: 0.8rem; color: var(--text-muted);">Protocolo: <strong>' + d.protocolo + '</strong></div>' +
+    '<div style="font-size: 0.95rem; margin: 4px 0;">Participante: <strong>' + d.participante + '</strong></div>' +
+    '<div style="font-size: 0.95rem; margin: 4px 0;">Números: <strong>' + d.numeros.join(', ') + '</strong> (' + d.quantidade + ' pontos)</div>' +
+    '<div style="font-size: 0.95rem; margin: 4px 0;">Valor: <strong>' + d.valorTotalFormatado + '</strong></div>' +
+    '<div style="margin-top: 8px;">Status: <span style="font-weight: 800; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; ' + badgeStyle + '">' + statusNome + '</span></div>';
+}
+
+/**
+ * Utilitários gerais
+ */
+function abrirModal(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+function fecharModal(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.remove('active');
+}
+
+function showToast(msg, type) {
+  var container = document.getElementById('toast-container');
+  if (!container) return;
+
+  var toast = document.createElement('div');
+  toast.className = 'toast ' + (type || 'info');
+  var icon = type === 'success' ? '✓' : (type === 'error' ? '✕' : 'ℹ');
+  toast.innerHTML = '<span style="font-weight: bold;">' + icon + '</span> ' + msg;
+
+  container.appendChild(toast);
+  setTimeout(function() {
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+  }, 4500);
+}
+
+function mascaraWhatsApp(input) {
+  var v = input.value.replace(/\D/g, '');
+  if (v.length > 11) v = v.substring(0, 11);
+  if (v.length > 10) {
+    v = v.replace(/^(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  } else if (v.length > 5) {
+    v = v.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+  } else if (v.length > 2) {
+    v = v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+  }
+  input.value = v;
+}
+
+function formatMoeda(val) {
+  return 'R$ ' + Number(val || 0).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+}
+
+function isAppsScript() {
+  return typeof google !== 'undefined' && google.script && google.script.run;
+}
+
+/**
+ * Mock para testes locais sem Apps Script ativo
+ */
+function getMockInitialData() {
+  var mockList = [];
+  for (var i = 1; i <= 500; i++) {
+    var s = '00' + i;
+    var n = s.substr(s.length - 3);
+    var st = 'DISPONIVEL';
+    if (i === 23 || i === 116) st = 'RESERVADO';
+    if (i === 88 || i === 250) st = 'AGUARDANDO_VALIDACAO';
+    if (i === 10 || i === 77) st = 'CONFIRMADO';
+    mockList.push({ n: n, s: st });
+  }
+
+  return {
+    success: true,
+    campanha: {
+      nomeEstabelecimento: 'Coffee Music Cafeteria',
+      nomeCampanha: 'Rifa Coberta',
+      premio: 'Final de semana em uma linda casa de praia em Beberibe/CE.',
+      totalPontos: 500,
+      valorUnitario: 20.00,
+      valorUnitarioFormatado: 'R$ 20,00',
+      tempoReservaMinutos: 15,
+      chavePix: 'coffeemusic.rifa@gmail.com',
+      nomeFavorecido: 'Coffee Music Cafeteria',
+      cidadePix: 'Beberibe',
+      whatsappContato: '5585999998888'
+    },
+    resumo: { disponiveis: 494, reservados: 2, aguardando: 2, confirmados: 2 },
+    numeros: mockList
+  };
+}
+</script>
