@@ -28,7 +28,7 @@
         <button type="button" class="btn-outline-header" onclick="openConsultarModal()">
           🔍 Consultar Participação
         </button>
-        <a href="?pagina=admin" class="btn-outline-header" title="Painel Administrativo">
+        <a href="<?= serviceUrl ? serviceUrl + '?pagina=admin' : '?pagina=admin' ?>" target="_top" class="btn-outline-header" title="Painel Administrativo">
           ⚙️ Admin
         </a>
       </div>

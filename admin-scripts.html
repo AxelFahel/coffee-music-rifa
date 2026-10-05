@@ -77,33 +77,42 @@ function carregarDashboard(callback) {
 }
 
 function exibirDashboard(data) {
-  document.getElementById('secao-login').style.display = 'none';
-  document.getElementById('secao-dashboard').style.display = 'block';
-  document.getElementById('btn-logout').style.display = 'inline-flex';
+  try {
+    document.getElementById('secao-login').style.display = 'none';
+    document.getElementById('secao-dashboard').style.display = 'block';
+    document.getElementById('btn-logout').style.display = 'inline-flex';
 
-  // 1. Atualiza métricas
-  var sf = data.statsFormatado || {};
-  document.getElementById('dash-total').textContent = sf.total || 500;
-  document.getElementById('dash-disp').textContent = sf.disponiveis || 0;
-  document.getElementById('dash-res').textContent = sf.reservados || 0;
-  document.getElementById('dash-val').textContent = sf.aguardando || 0;
-  document.getElementById('dash-conf').textContent = sf.confirmados || 0;
+    if (!data) return;
 
-  document.getElementById('dash-valor-confirmado').textContent = sf.valorConfirmado || 'R$ 0,00';
-  document.getElementById('dash-valor-pendente').textContent = sf.valorAguardando || 'R$ 0,00';
+    // 1. Atualiza métricas
+    var sf = data.statsFormatado || {};
+    var st = data.stats || {};
+    var elTotal = document.getElementById('dash-total'); if (elTotal) elTotal.textContent = sf.total || 500;
+    var elDisp = document.getElementById('dash-disp'); if (elDisp) elDisp.textContent = sf.disponiveis || 0;
+    var elRes = document.getElementById('dash-res'); if (elRes) elRes.textContent = sf.reservados || 0;
+    var elVal = document.getElementById('dash-val'); if (elVal) elVal.textContent = sf.aguardando || 0;
+    var elConf = document.getElementById('dash-conf'); if (elConf) elConf.textContent = sf.confirmados || 0;
 
-  var perc = Math.round(((data.stats.confirmados || 0) / (data.stats.total || 500)) * 100);
-  var elTaxa = document.getElementById('taxa-conversao');
-  if (elTaxa) elTaxa.textContent = perc + '%';
+    var elValConf = document.getElementById('dash-valor-confirmado'); if (elValConf) elValConf.textContent = sf.valorConfirmado || 'R$ 0,00';
+    var elValPend = document.getElementById('dash-valor-pendente'); if (elValPend) elValPend.textContent = sf.valorAguardando || 'R$ 0,00';
 
-  // 2. Renderiza tabela de pagamentos pendentes
-  renderizarTabelaPendentes(data.pendentes || []);
+    var totalN = Number(st.total || 500);
+    var perc = totalN > 0 ? Math.round(((st.confirmados || 0) / totalN) * 100) : 0;
+    var elTaxa = document.getElementById('taxa-conversao');
+    if (elTaxa) elTaxa.textContent = perc + '%';
 
-  // 3. Preenche formulário de configurações
-  preencherFormConfigs(data.configuracoes);
+    // 2. Renderiza tabela de pagamentos pendentes
+    renderizarTabelaPendentes(data.pendentes || []);
 
-  // 4. Renderiza logs
-  renderizarLogs(data.logs || []);
+    // 3. Preenche formulário de configurações
+    preencherFormConfigs(data.configuracoes);
+
+    // 4. Renderiza logs
+    renderizarLogs(data.logs || []);
+  } catch (err) {
+    console.error('Erro ao renderizar dashboard:', err);
+    showToast('Aviso na interface: ' + err.message, 'warning');
+  }
 }
 
 function renderizarTabelaPendentes(lista) {
@@ -317,10 +326,42 @@ function trocarTab(tabId) {
   // Marca botão ativo
   var botoes = document.querySelectorAll('.admin-tab-btn');
   botoes.forEach(function(b) {
-    if (b.getAttribute('onclick').indexOf(tabId) !== -1) {
+    if (b.getAttribute('onclick') && b.getAttribute('onclick').indexOf(tabId) !== -1) {
       b.classList.add('active');
     }
   });
+}
+
+/**
+ * Funções utilitárias do Admin
+ */
+function abrirModal(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+function fecharModal(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.remove('active');
+}
+
+function showToast(msg, type) {
+  var container = document.getElementById('toast-container');
+  if (!container) return;
+
+  var toast = document.createElement('div');
+  toast.className = 'toast ' + (type || 'info');
+  var icon = type === 'success' ? '✓' : (type === 'error' ? '✕' : 'ℹ');
+  toast.innerHTML = '<span style="font-weight: bold;">' + icon + '</span> ' + msg;
+
+  container.appendChild(toast);
+  setTimeout(function() {
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+  }, 4500);
+}
+
+function isAppsScript() {
+  return typeof google !== 'undefined' && google.script && google.script.run;
 }
 
 /**

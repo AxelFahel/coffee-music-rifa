@@ -21,6 +21,12 @@ function doGet(e) {
     title = 'Rifa Coberta | Coffee Music Cafeteria - Beberibe/CE';
   }
 
+  var serviceUrl = '';
+  try {
+    serviceUrl = ScriptApp.getService().getUrl();
+  } catch (err) {}
+  template.serviceUrl = serviceUrl;
+
   return template.evaluate()
     .setTitle(title)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
