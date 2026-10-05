@@ -412,4 +412,13 @@ function getMockAdminDashboard() {
     }
   };
 }
+
+function irParaInicio() {
+  if (window.top && window.top.location) {
+    var base = window.top.location.href.split('?')[0];
+    window.top.location.href = base;
+  } else {
+    window.location.search = '';
+  }
+}
 </script>

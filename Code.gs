@@ -37,7 +37,16 @@ function doGet(e) {
  * Helper para inclusão modular de arquivos HTML (CSS e JS) nos templates
  */
 function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  try {
+    return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  } catch (e) {
+    try {
+      return HtmlService.createHtmlOutputFromFile(filename + '.html').getContent();
+    } catch (e2) {
+      Logger.log('Erro ao incluir ' + filename + ': ' + e.message);
+      return '<!-- Erro ao incluir ' + filename + ' -->';
+    }
+  }
 }
 
 /**

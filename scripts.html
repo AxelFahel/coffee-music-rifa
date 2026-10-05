@@ -720,4 +720,13 @@ function getMockInitialData() {
     numeros: mockList
   };
 }
+
+function irParaAdmin() {
+  if (window.top && window.top.location) {
+    var base = window.top.location.href.split('?')[0];
+    window.top.location.href = base + '?pagina=admin';
+  } else {
+    window.location.search = '?pagina=admin';
+  }
+}
 </script>
