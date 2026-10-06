@@ -15,22 +15,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function autenticarAdmin(e) {
   if (e) e.preventDefault();
-  var pin = document.getElementById('admin-pin-input').value.trim();
+  var input = document.getElementById('admin-pin-input');
+  var pin = input ? input.value.trim() : '';
   if (!pin) {
-    showToast('Informe o PIN administrativo.', 'warning');
+    showToast('Informe o PIN administrativo (padrão: coffee2026).', 'warning');
     return;
   }
 
   adminToken = pin;
   var btn = document.getElementById('btn-login-submit');
-  btn.disabled = true;
-  btn.textContent = 'Autenticando...';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Autenticando...';
+  }
 
   carregarDashboard(function(success) {
-    btn.disabled = false;
-    btn.textContent = 'ACESSAR PAINEL';
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'ACESSAR PAINEL';
+    }
     if (success) {
       sessionStorage.setItem('cm_admin_token', adminToken);
+      showToast('Acesso concedido com sucesso!', 'success');
     }
   });
 }
