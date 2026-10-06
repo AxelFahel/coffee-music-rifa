@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Rifa Coberta | Coffee Music Cafeteria - Beberibe/CE</title>
-  <meta name="description" content="Participe da Rifa Coberta da Coffee Music Cafeteria e concorra a um final de semana inesquecível em Beberibe/CE!">
+  <title>Ação entre Amigos | Coffee Music Cafeteria - Beberibe/CE</title>
+  <meta name="description" content="Participe da Ação entre Amigos da Coffee Music Cafeteria e concorra a um final de semana inesquecível em Beberibe/CE!">
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   
-  <?!= include('styles'); ?>
+  <?!= include_('styles'); ?>
 </head>
 <body>
 
@@ -28,9 +28,6 @@
         <button type="button" class="btn-outline-header" onclick="openConsultarModal()">
           🔍 Consultar Participação
         </button>
-        <button type="button" class="btn-outline-header" onclick="irParaAdmin()" title="Painel Administrativo">
-          ⚙️ Admin
-        </button>
       </div>
     </div>
   </header>
@@ -39,7 +36,7 @@
     <!-- Hero da Campanha -->
     <section class="hero-card" aria-labelledby="campanha-titulo">
       <span class="hero-tag">🌴 Campanha Especial</span>
-      <h2 id="campanha-titulo" class="hero-title">RIFA COBERTA</h2>
+      <h2 id="campanha-titulo" class="hero-title">AÇÃO ENTRE AMIGOS</h2>
       <p style="color: var(--text-muted); font-size: 1.05rem;">
         Participe com a Coffee Music e concorra a momentos inesquecíveis no litoral cearense!
       </p>
@@ -69,7 +66,7 @@
     </section>
 
     <!-- Resumo dos Números (Cards de Status) -->
-    <section class="stats-grid" aria-label="Estatísticas da Rifa">
+    <section class="stats-grid" aria-label="Estatísticas da Ação">
       <div class="stat-card stat-disp">
         <div class="stat-number" id="count-disponiveis">-</div>
         <div class="stat-title">Disponíveis</div>
@@ -114,13 +111,18 @@
       <div id="grade-numeros" class="numbers-grid" role="region" aria-live="polite">
         <!-- Gerado via JavaScript (001 a 500) -->
         <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">
-          Carregando números da Rifa Coberta...
+          Carregando números da Ação entre Amigos...
         </div>
       </div>
     </section>
   </main>
 
   <!-- Barra Flutuante de Seleção (Mobile e Desktop) -->
+  <div id="barra-retomar" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:150; background:#3b2314; color:#fff; padding:12px 16px; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+    <span style="font-weight:700;">Você tem uma reserva em andamento. Conclua o pagamento antes que expire.</span>
+    <button type="button" class="btn-continue" style="padding:10px 20px;" onclick="retomarPagamento()">RETOMAR PAGAMENTO</button>
+  </div>
+
   <aside id="barra-selecao" class="selection-bar" aria-label="Resumo dos números selecionados">
     <div class="bar-container">
       <div class="bar-info">
@@ -181,8 +183,8 @@
   <div id="modal-pagamento" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-pag-titulo">
     <div class="modal-box">
       <div class="modal-header">
-        <h3 id="modal-pag-titulo" class="modal-title">Pagamento PIX da Rifa</h3>
-        <button type="button" class="modal-close" onclick="fecharModal('modal-pagamento')" aria-label="Fechar">✕</button>
+        <h3 id="modal-pag-titulo" class="modal-title">Pagamento PIX</h3>
+        <button type="button" class="modal-close" onclick="fecharModalPagamento()" aria-label="Fechar (a reserva continua ativa)">✕</button>
       </div>
       <div class="modal-body">
         <!-- Contador Regressivo de 15 Minutos -->
@@ -288,7 +290,7 @@
         </div>
 
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
-          Guarde o código de protocolo para consultar o andamento da sua rifa a qualquer momento.
+          Guarde o código de protocolo para consultar o andamento da sua participação a qualquer momento.
         </p>
 
         <a id="btn-whatsapp-notif" href="#" target="_blank" class="btn-whatsapp-block">
@@ -328,6 +330,6 @@
   <!-- Contêiner de Notificações Toast -->
   <div id="toast-container" class="toast-container" aria-live="assertive"></div>
 
-  <?!= include('scripts'); ?>
+  <?!= include_('scripts'); ?>
 </body>
 </html>

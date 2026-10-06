@@ -1,48 +1,59 @@
 <script>
 /**
- * admin-scripts.html - Lógica do painel de administração da Rifa Coberta
+ * admin-scripts.html - Lógica do painel de administração da Ação entre Amigos
  */
 
-var adminToken = sessionStorage.getItem('cm_admin_token') || '';
+// O navegador pode bloquear armazenamento dentro do iframe do Apps Script.
+// Nesse caso, o login continua funcionando durante a visita atual.
+function lerTokenAdmin() {
+  try { return sessionStorage.getItem('cm_admin_token') || ''; }
+  catch (err) { return ''; }
+}
+
+function salvarTokenAdmin(token) {
+  try {
+    if (token) sessionStorage.setItem('cm_admin_token', token);
+    else sessionStorage.removeItem('cm_admin_token');
+  } catch (err) {}
+}
+
+var adminToken = lerTokenAdmin();
 var rejeicaoAlvo = null;
 
 document.addEventListener('DOMContentLoaded', function() {
   if (adminToken) {
-    document.getElementById('admin-pin-input').value = adminToken;
     carregarDashboard();
   }
 });
 
-function autenticarAdmin(e) {
+function autenticarAdmin(e, contaGoogle) {
   if (e) e.preventDefault();
   var input = document.getElementById('admin-pin-input');
-  var pin = input ? input.value.trim() : '';
-  if (!pin) {
-    showToast('Informe o PIN administrativo (padrão: coffee2026).', 'warning');
-    return;
-  }
-
-  adminToken = pin;
+  var pin = contaGoogle ? '' : input.value;
+  if (!pin && !contaGoogle) { showToast('Informe sua senha administrativa.', 'warning'); return; }
+  if (!isAppsScript()) { showToast('Abra o painel pelo link publicado do Apps Script.', 'error'); return; }
   var btn = document.getElementById('btn-login-submit');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Autenticando...';
-  }
-
-  carregarDashboard(function(success) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'ACESSAR PAINEL';
-    }
-    if (success) {
-      sessionStorage.setItem('cm_admin_token', adminToken);
-      showToast('Acesso concedido com sucesso!', 'success');
-    }
-  });
+  btn.disabled = true;
+  btn.textContent = 'Autenticando...';
+  google.script.run.withSuccessHandler(function(res) {
+    btn.disabled = false;
+    btn.textContent = 'ACESSAR PAINEL';
+    input.value = '';
+    if (!res || !res.success) { showToast(res ? res.message : 'Falha no login.', 'error'); return; }
+    adminToken = res.token;
+    salvarTokenAdmin(adminToken);
+    carregarDashboard();
+  }).withFailureHandler(function() {
+    btn.disabled = false;
+    btn.textContent = 'ACESSAR PAINEL';
+    input.value = '';
+    showToast('Não foi possível entrar. Tente novamente.', 'error');
+  }).loginAdmin(pin);
 }
 
 function fazerLogout() {
-  sessionStorage.removeItem('cm_admin_token');
+  if (isAppsScript() && adminToken) google.script.run.withFailureHandler(function() {}).logoutAdmin(adminToken);
+  salvarTokenAdmin('');
   adminToken = '';
   document.getElementById('secao-login').style.display = 'block';
   document.getElementById('secao-dashboard').style.display = 'none';
@@ -58,6 +69,7 @@ function carregarDashboard(callback) {
           exibirDashboard(res);
           if (callback) callback(true);
         } else if (res && res.unauthorized) {
+          fazerLogout();
           showToast(res.message, 'error');
           document.getElementById('secao-login').style.display = 'block';
           document.getElementById('secao-dashboard').style.display = 'none';
@@ -121,39 +133,54 @@ function exibirDashboard(data) {
   }
 }
 
+function adicionarCelula(row, text) {
+  var cell = document.createElement('td');
+  cell.textContent = text == null ? '' : String(text);
+  row.appendChild(cell);
+  return cell;
+}
+
+function linkSeguro(cell, url, label, host) {
+  try {
+    var parsed = new URL(url);
+    if (parsed.protocol !== 'https:' || parsed.hostname !== host || parsed.username || parsed.password) throw new Error('URL inválida');
+    var link = document.createElement('a');
+    link.href = parsed.href;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = label;
+    cell.appendChild(link);
+  } catch (err) { cell.textContent = 'Link indisponível'; }
+}
+
 function renderizarTabelaPendentes(lista) {
   var tbody = document.getElementById('tbody-pendentes');
-  var badge = document.getElementById('badge-pendentes-count');
-  badge.textContent = lista.length;
-
-  if (lista.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 28px;">Nenhum pagamento aguardando validação no momento. 🎉</td></tr>';
-    return;
+  document.getElementById('badge-pendentes-count').textContent = lista.length;
+  tbody.textContent = '';
+  if (!lista.length) {
+    var empty = document.createElement('tr');
+    adicionarCelula(empty, 'Nenhum pagamento aguardando validação.').colSpan = 8;
+    tbody.appendChild(empty);
   }
-
-  tbody.innerHTML = '';
   lista.forEach(function(item) {
-    var tr = document.createElement('tr');
-
-    var zapLink = item.whatsappLimpo ? 'https://wa.me/' + (item.whatsappLimpo.startsWith('55') ? item.whatsappLimpo : '55' + item.whatsappLimpo) : '#';
-    var numerosTexto = item.numeros.join(', ');
-
-    tr.innerHTML = 
-      '<td><strong>' + item.reservaId + '</strong></td>' +
-      '<td>' + item.nome + '</td>' +
-      '<td><a href="' + zapLink + '" target="_blank" style="color: #25d366; text-decoration: none; font-weight: 700;">' + item.whatsapp + ' 💬</a></td>' +
-      '<td><span class="badge-numbers">' + numerosTexto + '</span> (' + item.quantidade + ' pts)</td>' +
-      '<td><strong>' + item.valorFormatado + '</strong></td>' +
-      '<td>' + item.dataEnvioFormatada + '</td>' +
-      '<td><a href="' + item.comprovanteUrl + '" target="_blank" class="btn-action view-file">👁️ Ver Arquivo</a></td>' +
-      '<td>' +
-        '<div style="display: flex; gap: 6px;">' +
-          '<button type="button" class="btn-action approve" onclick="iniciarAprovacao(\'' + item.pagamentoId + '\', \'' + item.reservaId + '\', \'' + numerosTexto + '\')">✓ Aprovar</button>' +
-          '<button type="button" class="btn-action reject" onclick="abrirModalRejeicao(\'' + item.pagamentoId + '\', \'' + item.reservaId + '\', \'' + numerosTexto + '\')">✕ Rejeitar</button>' +
-        '</div>' +
-      '</td>';
-
-    tbody.appendChild(tr);
+    var row = document.createElement('tr');
+    var numeros = (item.numeros || []).join(', ');
+    adicionarCelula(row, item.reservaId);
+    adicionarCelula(row, item.nome);
+    var phone = String(item.whatsappLimpo || '').replace(/\D/g, '');
+    linkSeguro(adicionarCelula(row, ''), 'https://wa.me/' + (phone.indexOf('55') === 0 ? phone : '55' + phone), item.whatsapp, 'wa.me');
+    adicionarCelula(row, numeros + ' (' + item.quantidade + ' pts)');
+    adicionarCelula(row, item.valorFormatado);
+    adicionarCelula(row, item.dataEnvioFormatada);
+    linkSeguro(adicionarCelula(row, ''), item.comprovanteUrl, 'Ver comprovante', 'drive.google.com');
+    var actions = adicionarCelula(row, '');
+    [['✓ Aprovar', 'approve', iniciarAprovacao], ['✕ Rejeitar', 'reject', abrirModalRejeicao]].forEach(function(action) {
+      var button = document.createElement('button');
+      button.type = 'button'; button.className = 'btn-action ' + action[1]; button.textContent = action[0];
+      button.addEventListener('click', function() { action[2](item.pagamentoId, item.reservaId, numeros); });
+      actions.appendChild(button);
+    });
+    tbody.appendChild(row);
   });
 }
 
@@ -247,7 +274,7 @@ function salvarConfiguracoes(e) {
     whatsappContato: document.getElementById('cfg-whatsapp').value.trim(),
     valorNumero: document.getElementById('cfg-valor-unit').value,
     tempoReservaMinutos: document.getElementById('cfg-tempo-reserva').value,
-    adminPin: document.getElementById('cfg-admin-pin').value.trim()
+    adminPin: document.getElementById('cfg-admin-pin').value
   };
 
   var btn = document.getElementById('btn-salvar-cfg');
@@ -262,9 +289,9 @@ function salvarConfiguracoes(e) {
         if (res && res.success) {
           showToast(res.message, 'success');
           if (payload.adminPin) {
-            adminToken = payload.adminPin;
-            sessionStorage.setItem('cm_admin_token', adminToken);
+            fazerLogout();
             document.getElementById('cfg-admin-pin').value = '';
+            return;
           }
           carregarDashboard();
         } else {
@@ -286,22 +313,11 @@ function salvarConfiguracoes(e) {
 
 function renderizarLogs(logs) {
   var tbody = document.getElementById('tbody-logs');
-  if (!tbody) return;
-
-  if (logs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum log registrado.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = '';
-  logs.forEach(function(l) {
-    var tr = document.createElement('tr');
-    tr.innerHTML = 
-      '<td style="white-space: nowrap;">' + l.dataHora + '</td>' +
-      '<td><strong>' + l.acao + '</strong></td>' +
-      '<td>' + l.usuario + '</td>' +
-      '<td style="font-size: 0.82rem; font-family: monospace;">' + (typeof l.detalhes === 'object' ? JSON.stringify(l.detalhes) : l.detalhes) + '</td>';
-    tbody.appendChild(tr);
+  tbody.textContent = '';
+  logs.forEach(function(item) {
+    var row = document.createElement('tr');
+    [item.dataHora, item.acao, item.usuario, typeof item.detalhes === 'object' ? JSON.stringify(item.detalhes) : item.detalhes].forEach(function(value) { adicionarCelula(row, value); });
+    tbody.appendChild(row);
   });
 }
 
@@ -358,7 +374,7 @@ function showToast(msg, type) {
   var toast = document.createElement('div');
   toast.className = 'toast ' + (type || 'info');
   var icon = type === 'success' ? '✓' : (type === 'error' ? '✕' : 'ℹ');
-  toast.innerHTML = '<span style="font-weight: bold;">' + icon + '</span> ' + msg;
+  toast.textContent = icon + ' ' + msg;
 
   container.appendChild(toast);
   setTimeout(function() {
@@ -419,12 +435,4 @@ function getMockAdminDashboard() {
   };
 }
 
-function irParaInicio() {
-  if (window.top && window.top.location) {
-    var base = window.top.location.href.split('?')[0];
-    window.top.location.href = base;
-  } else {
-    window.location.search = '';
-  }
-}
 </script>

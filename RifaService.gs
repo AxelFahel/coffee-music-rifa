@@ -7,8 +7,8 @@
  */
 function getPublicData() {
   try {
-    var config = getActiveConfig();
-    var numerosRaw = getNumerosRaw();
+    var config = getActiveConfig_();
+    var numerosRaw = getNumerosRaw_();
 
     var counts = {
       total: config.totalNumeros,
@@ -23,7 +23,7 @@ function getPublicData() {
     // Se a lista estiver vazia (primeira execução), gera dinamicamente para o frontend não quebrar
     if (numerosRaw.length === 0) {
       for (var i = 1; i <= config.totalNumeros; i++) {
-        var numStr = padNumero(i, 3);
+        var numStr = padNumero_(i, 3);
         numerosList.push({ n: numStr, s: CONFIG.STATUS.DISPONIVEL });
         counts.disponiveis++;
       }
@@ -57,7 +57,7 @@ function getPublicData() {
         premio: config.premio,
         totalPontos: config.totalNumeros,
         valorUnitario: config.valorNumero,
-        valorUnitarioFormatado: formatCurrency(config.valorNumero),
+        valorUnitarioFormatado: formatCurrency_(config.valorNumero),
         tempoReservaMinutos: config.tempoReservaMinutos,
         whatsappContato: config.whatsappContato,
         chavePix: config.chavePix,
@@ -71,7 +71,7 @@ function getPublicData() {
     Logger.log('Erro em getPublicData: ' + error.message);
     return {
       success: false,
-      message: 'Não foi possível carregar os dados da rifa: ' + error.message
+      message: 'Não foi possível carregar os dados da ação: ' + error.message
     };
   }
 }
@@ -81,8 +81,8 @@ function getPublicData() {
  */
 function getNumerosStatus() {
   try {
-    var config = getActiveConfig();
-    var numerosRaw = getNumerosRaw();
+    var config = getActiveConfig_();
+    var numerosRaw = getNumerosRaw_();
 
     var counts = {
       disponiveis: 0,
@@ -131,9 +131,11 @@ function consultarProtocolo(protocolo) {
   }
 
   var protoLimpo = protocolo.trim().toUpperCase();
+  if (!/^CM-\d{4}-[A-Z0-9]{6,16}$/.test(protoLimpo)) return { success: false, message: 'Protocolo inválido.' };
 
   try {
-    var ss = getSpreadsheet();
+    limitar_('CONSULTAS', 120, 60);
+    var ss = getSpreadsheet_();
     var sheet = ss.getSheetByName(CONFIG.SHEETS.RESERVAS);
     if (!sheet) {
       return { success: false, message: 'Base de reservas não encontrada.' };
@@ -189,9 +191,9 @@ function consultarProtocolo(protocolo) {
         participante: nomeMascarado,
         numeros: reserva.numeros,
         quantidade: reserva.quantidade,
-        valorTotalFormatado: formatCurrency(reserva.valorTotal),
+        valorTotalFormatado: formatCurrency_(reserva.valorTotal),
         status: reserva.status,
-        dataReservaFormatada: formatDateTime(reserva.dataReserva),
+        dataReservaFormatada: formatDateTime_(reserva.dataReserva),
         expirado: (reserva.status === CONFIG.STATUS.RESERVADO && new Date(reserva.dataExpiracao).getTime() < new Date().getTime())
       }
     };

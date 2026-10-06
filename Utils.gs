@@ -1,11 +1,11 @@
 /**
- * Utils.gs - Funções utilitárias do sistema Rifa Coberta
+ * Utils.gs - Funções utilitárias do sistema Ação entre Amigos
  */
 
 /**
  * Formata um número como moeda brasileira (R$ XX,XX)
  */
-function formatCurrency(valor) {
+function formatCurrency_(valor) {
   var num = Number(valor) || 0;
   return 'R$ ' + num.toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
 }
@@ -13,7 +13,7 @@ function formatCurrency(valor) {
 /**
  * Preenche o número com zeros à esquerda (ex: 5 -> "005")
  */
-function padNumero(num, len) {
+function padNumero_(num, len) {
   var s = String(num);
   len = len || 3;
   while (s.length < len) {
@@ -25,7 +25,7 @@ function padNumero(num, len) {
 /**
  * Formata data no fuso de Fortaleza/Brasília (dd/MM/yyyy HH:mm:ss)
  */
-function formatDateTime(date) {
+function formatDateTime_(date) {
   if (!date) return '';
   var d = (date instanceof Date) ? date : new Date(date);
   return Utilities.formatDate(d, 'America/Fortaleza', 'dd/MM/yyyy HH:mm:ss');
@@ -34,7 +34,7 @@ function formatDateTime(date) {
 /**
  * Formata apenas a data (YYYY-MM-DD) para nomes de arquivos
  */
-function formatDateISO(date) {
+function formatDateISO_(date) {
   if (!date) date = new Date();
   var d = (date instanceof Date) ? date : new Date(date);
   return Utilities.formatDate(d, 'America/Fortaleza', 'yyyy-MM-dd');
@@ -43,20 +43,14 @@ function formatDateISO(date) {
 /**
  * Gera protocolo único e amigável: CM-2026-XXXXXX
  */
-function generateProtocolo() {
-  var ano = new Date().getFullYear();
-  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sem O, 0, I, 1 para evitar confusão visual
-  var rand = '';
-  for (var i = 0; i < 6; i++) {
-    rand += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return 'CM-' + ano + '-' + rand;
+function generateProtocolo_() {
+  return 'CM-' + new Date().getFullYear() + '-' + Utilities.getUuid().replace(/-/g, '').slice(0, 16).toUpperCase();
 }
 
 /**
  * Sanitiza texto para nome de arquivo seguro (sem acentos, minúsculas, hífens)
  */
-function slugify(text) {
+function slugify_(text) {
   if (!text) return 'participante';
   return text.toString().toLowerCase().trim()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
@@ -68,18 +62,18 @@ function slugify(text) {
 /**
  * Gera mensagem codificada para o WhatsApp da cafeteria
  */
-function buildWhatsAppUrl(telefoneDestino, nomeParticipante, numeros, valorTotal, protocolo) {
+function buildWhatsAppUrl_(telefoneDestino, nomeParticipante, numeros, valorTotal, protocolo) {
   var telLimpo = String(telefoneDestino).replace(/\D/g, '');
   if (!telLimpo.startsWith('55')) {
     telLimpo = '55' + telLimpo;
   }
 
   var numerosTexto = Array.isArray(numeros) ? numeros.join(', ') : String(numeros);
-  var texto = 'Olá! Participei da Rifa Coberta da Coffee Music.\n\n' +
+  var texto = 'Olá! Participei da Ação entre Amigos da Coffee Music.\n\n' +
               '*Protocolo:* ' + protocolo + '\n' +
               '*Nome:* ' + nomeParticipante + '\n' +
               '*Números:* ' + numerosTexto + '\n' +
-              '*Valor:* ' + formatCurrency(valorTotal) + '\n\n' +
+              '*Valor:* ' + formatCurrency_(valorTotal) + '\n\n' +
               'Meu comprovante já foi enviado pelo sistema e aguarda validação.';
 
   return 'https://api.whatsapp.com/send?phone=' + telLimpo + '&text=' + encodeURIComponent(texto);
@@ -88,10 +82,10 @@ function buildWhatsAppUrl(telefoneDestino, nomeParticipante, numeros, valorTotal
 /**
  * Gera payload padrão EMV BR Code (PIX Copia e Cola)
  */
-function generatePixPayload(chavePix, nomeFavorecido, cidadePix, valor, txId) {
+function generatePixPayload_(chavePix, nomeFavorecido, cidadePix, valor, txId) {
   function formatField(id, value) {
     var valStr = String(value);
-    var len = padNumero(valStr.length, 2);
+    var len = padNumero_(valStr.length, 2);
     return id + len + valStr;
   }
 
@@ -133,7 +127,7 @@ function generatePixPayload(chavePix, nomeFavorecido, cidadePix, valor, txId) {
 
   // 63: CRC16-CCITT
   payload += '6304';
-  var crc = calculateCRC16(payload);
+  var crc = calculateCRC16_(payload);
   payload += crc;
 
   return payload;
@@ -142,7 +136,7 @@ function generatePixPayload(chavePix, nomeFavorecido, cidadePix, valor, txId) {
 /**
  * Cálculo de CRC16 para o padrão PIX
  */
-function calculateCRC16(str) {
+function calculateCRC16_(str) {
   var crc = 0xFFFF;
   var strlen = str.length;
   for (var c = 0; c < strlen; c++) {
@@ -165,6 +159,6 @@ function calculateCRC16(str) {
 /**
  * Retorna URL de imagem do QR Code
  */
-function getQrCodeImageUrl(text) {
+function getQrCodeImageUrl_(text) {
   return 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data=' + encodeURIComponent(text);
 }

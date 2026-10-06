@@ -1,6 +1,6 @@
-# Sistema de Rifa Online - Coffee Music Cafeteria ☕🌴
+# Sistema de Ação entre Amigos - Coffee Music Cafeteria ☕🌴
 
-> **Campanha:** RIFA COBERTA  
+> **Campanha:** AÇÃO ENTRE AMIGOS  
 > **Prêmio:** Final de semana em uma linda casa de praia em Beberibe/CE  
 > **Pontos:** 500 números (001 a 500)  
 > **Valor por Ponto:** R$ 20,00  
@@ -13,14 +13,15 @@
 | Arquivo | Função / Responsabilidade |
 | :--- | :--- |
 | **`appsscript.json`** | Manifesto do Apps Script com fuso de Fortaleza/CE e permissões de Web App |
-| **`Code.gs`** | Ponto de entrada HTTP (`doGet`), roteamento (`index` e `admin`), helper `include` e rotina `setupSistema()` |
+| **`Code.gs`** | Ponto de entrada HTTP (`doGet`), roteamento (`index` e `admin`), helper `include_` e rotina `setupSistema()` |
 | **`Config.gs`** | Configurações centrais, preços, chaves PIX, tempos de reserva e leitura dinâmica |
 | **`Database.gs`** | Gerenciamento das abas do Google Sheets (`NUMEROS`, `PARTICIPANTES`, `RESERVAS`, `PAGAMENTOS`, `CONFIGURACOES`, `LOGS`) |
 | **`Utils.gs`** | Formatação de moeda BRL, protocolos únicos (`CM-2026-XXXXXX`), gerador oficial de PIX Copia e Cola / QR Code com CRC16 |
 | **`RifaService.gs`** | Consultas públicas dos números, status em tempo real e consulta de protocolo |
-| **`ReservaService.gs`** | Reserva atômica com `LockService`, controle de concorrência e rotina periódica `liberarReservasExpiradas()` |
+| **`ReservaService.gs`** | Reserva serializada com `LockService`, controle de concorrência e rotina periódica `liberarReservasExpiradas_()` |
 | **`UploadService.gs`** | Upload seguro de comprovantes para o Google Drive em pasta organizada (`Coffee Music - Rifa Coberta / Comprovantes`) |
 | **`PagamentoService.gs`** | Validação do envio de comprovante e transição para `AGUARDANDO_VALIDACAO` |
+| **`Security.gs`** | Autenticação, sessões, limites de uso e migração de segurança |
 | **`AdminService.gs`** | Dashboard administrativo com métricas financeiras, aprovação e rejeição com liberação de números |
 | **`index.html`** | Página pública responsiva com identidade visual de cafeteria e praia (Beberibe/CE) |
 | **`styles.html`** | Estilos CSS modernos (CSS Variables, Flexbox, Grid, animações, acessibilidade) |
@@ -52,6 +53,7 @@ No editor do Google Apps Script:
      - `UploadService` (cole `UploadService.gs`)
      - `PagamentoService` (cole `PagamentoService.gs`)
      - `AdminService` (cole `AdminService.gs`)
+     - `Security` (cole `Security.gs`)
 
 2. **Arquivos `.html`:**
    - Clique no ícone `+` > selecione **HTML** e crie:
@@ -86,11 +88,13 @@ No editor do Google Apps Script:
 
 ---
 
+Antes de publicar, execute `configurarSeguranca` no arquivo `Security.gs`, com a conta proprietária. Consulte [o guia de atualização](ATUALIZACAO-SEGURANCA.md).
+
 ### Passo 4: Fazer o Deploy como Web App
 1. No canto superior direito, clique em **Implantar** > **Nova implantação**.
 2. Clique na engrenagem ao lado de "Selecionar tipo" e escolha **App da Web**.
 3. Preencha as opções:
-   - **Descrição:** `Versão 1.0 - Rifa Coberta`
+   - **Descrição:** `Versão 1.0 - Ação entre Amigos`
    - **Executar como:** `Eu (<seu-email>)`
    - **Quem pode acessar:** `Qualquer pessoa` (Any)
 4. Clique em **Implantar**.
@@ -105,7 +109,7 @@ No editor do Google Apps Script:
   
 - **Painel Administrativo:**  
   `https://script.google.com/macros/s/.../exec?pagina=admin`  
-  *PIN inicial padrão:* `coffee2026` (alterável na aba CONFIGURACOES ou direto no painel)
+  **Acesso:** conta Google proprietária ou senha exclusiva configurada. O PIN antigo foi removido. Veja [ATUALIZACAO-SEGURANCA.md](ATUALIZACAO-SEGURANCA.md).
 
 ---
 
@@ -116,3 +120,4 @@ No editor do Google Apps Script:
 3. **Reserva Temporária de 15 Minutos:** Registrada com timestamp UTC/Fortaleza.
 4. **Trigger de Expiração:** Executa a cada minuto liberando apenas números cujo status ainda seja `RESERVADO` e sem comprovante enviado.
 5. **Proteção de Comprovante:** Assim que o cliente envia o comprovante, o status transita para `AGUARDANDO_VALIDACAO`, blindando os números contra expiração automática.
+

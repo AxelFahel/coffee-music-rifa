@@ -1,9 +1,10 @@
 <script>
 /**
- * scripts.html - Frontend interativo da Rifa Coberta (Coffee Music)
+ * scripts.html - Frontend interativo da Ação entre Amigos (Coffee Music)
  */
 
 var selectedNumbers = new Set();
+var reservando = false;
 var campanhaConfig = {
   valorUnitario: 20.00,
   totalPontos: 500,
@@ -229,7 +230,7 @@ function filtrarNumeros(query) {
  */
 function abrirModalDados() {
   if (selectedNumbers.size === 0) {
-    showToast('Selecione pelo menos um número da rifa.', 'warning');
+    showToast('Selecione pelo menos um número da ação.', 'warning');
     return;
   }
 
@@ -264,7 +265,16 @@ function submeterReserva(e) {
     return;
   }
 
+  if (reservando) return; // evita duplo clique / duplo envio
+  if (currentReservation && reservaAtivaValida()) {
+    fecharModal('modal-dados');
+    retomarPagamento();
+    showToast('Você já tem uma reserva em andamento. Conclua o pagamento.', 'warning');
+    return;
+  }
+
   var btn = document.getElementById('btn-submeter-reserva');
+  reservando = true;
   btn.disabled = true;
   btn.textContent = 'Verificando disponibilidade...';
 
@@ -278,6 +288,7 @@ function submeterReserva(e) {
   if (isAppsScript()) {
     google.script.run
       .withSuccessHandler(function(res) {
+        reservando = false;
         btn.disabled = false;
         btn.textContent = 'AVANÇAR PARA PAGAMENTO PIX';
 
@@ -292,6 +303,7 @@ function submeterReserva(e) {
         }
       })
       .withFailureHandler(function(err) {
+        reservando = false;
         btn.disabled = false;
         btn.textContent = 'AVANÇAR PARA PAGAMENTO PIX';
         showToast('Erro no servidor: ' + err.message, 'error');
@@ -300,6 +312,7 @@ function submeterReserva(e) {
   } else {
     // Simulação local
     setTimeout(function() {
+      reservando = false;
       btn.disabled = false;
       btn.textContent = 'AVANÇAR PARA PAGAMENTO PIX';
       fecharModal('modal-dados');
@@ -333,6 +346,15 @@ function submeterReserva(e) {
 function iniciarFluxoPagamento(reserva) {
   currentReservation = reserva;
 
+  // Os números agora pertencem a esta reserva: limpa a seleção local para que a
+  // sincronização não os trate como "tomados por outra pessoa".
+  reserva.numeros.forEach(function(n) {
+    var c = document.getElementById('num-' + n);
+    if (c) c.classList.remove('selected');
+  });
+  selectedNumbers.clear();
+  atualizarBarraSelecao();
+
   document.getElementById('pix-valor-display').textContent = reserva.valorTotalFormatado;
   document.getElementById('pix-protocolo-display').textContent = reserva.protocolo;
   document.getElementById('pix-favorecido-display').textContent = reserva.pix.nomeFavorecido;
@@ -342,8 +364,11 @@ function iniciarFluxoPagamento(reserva) {
   document.getElementById('pix-copiacola-texto').textContent = reserva.pix.copiaECola;
   document.getElementById('pix-qrcode-img').src = reserva.pix.qrCodeUrl;
 
-  // Inicia contador regressivo
-  iniciarContadorRegressivo(reserva.tempoRestanteSegundos || 900);
+  // Contador baseado no prazo real de expiração (correto também ao retomar)
+  var restante = reserva.dataExpiracaoISO
+    ? Math.floor((new Date(reserva.dataExpiracaoISO).getTime() - Date.now()) / 1000)
+    : (reserva.tempoRestanteSegundos || 900);
+  iniciarContadorRegressivo(Math.max(restante, 0));
 
   // Reseta input de comprovante
   document.getElementById('input-comprovante').value = '';
@@ -352,6 +377,34 @@ function iniciarFluxoPagamento(reserva) {
   comprovanteData = null;
 
   abrirModal('modal-pagamento');
+  mostrarBarraRetomar(false);
+}
+
+function reservaAtivaValida() {
+  if (!currentReservation) return false;
+  if (!currentReservation.dataExpiracaoISO) return true;
+  return new Date(currentReservation.dataExpiracaoISO).getTime() > Date.now();
+}
+
+function retomarPagamento() {
+  if (!reservaAtivaValida()) {
+    currentReservation = null;
+    mostrarBarraRetomar(false);
+    return;
+  }
+  abrirModal('modal-pagamento');
+  mostrarBarraRetomar(false);
+}
+
+/** Fecha o modal de PIX sem perder a reserva e oferece botão para retomar. */
+function fecharModalPagamento() {
+  fecharModal('modal-pagamento');
+  if (reservaAtivaValida()) mostrarBarraRetomar(true);
+}
+
+function mostrarBarraRetomar(mostrar) {
+  var el = document.getElementById('barra-retomar');
+  if (el) el.style.display = mostrar ? 'flex' : 'none';
 }
 
 /**
@@ -372,6 +425,8 @@ function iniciarContadorRegressivo(segundos) {
       clearInterval(countdownInterval);
       showToast('O prazo de 15 minutos para esta reserva encerrou. Os números foram liberados.', 'error');
       fecharModal('modal-pagamento');
+      currentReservation = null;
+      mostrarBarraRetomar(false);
       selectedNumbers.clear();
       atualizarBarraSelecao();
       sincronizarStatusNumeros();
@@ -500,6 +555,7 @@ function enviarComprovante(e) {
 
   var payload = {
     reservaId: currentReservation.protocolo,
+    reservaToken: currentReservation.token,
     filePayload: comprovanteData
   };
 
@@ -538,6 +594,8 @@ function enviarComprovante(e) {
 function concluirEnvioComprovante(res) {
   if (countdownInterval) clearInterval(countdownInterval);
   fecharModal('modal-pagamento');
+  currentReservation = null;
+  mostrarBarraRetomar(false);
 
   // Preenche tela de sucesso
   document.getElementById('sucesso-protocolo').textContent = res.protocolo;
@@ -583,7 +641,7 @@ function buscarProtocolo() {
         exibirResultadoProtocolo(res);
       })
       .withFailureHandler(function(err) {
-        resBox.innerHTML = '<div style="color: var(--status-confirmado); font-weight: 700;">Erro na consulta: ' + err.message + '</div>';
+        resBox.textContent = 'Não foi possível consultar. Tente novamente.';
       })
       .consultarProtocolo(proto);
   } else {
@@ -607,7 +665,7 @@ function buscarProtocolo() {
 function exibirResultadoProtocolo(res) {
   var resBox = document.getElementById('resultado-consulta');
   if (!res || !res.success) {
-    resBox.innerHTML = '<div style="color: var(--status-confirmado); font-weight: 600;">' + (res ? res.message : 'Protocolo não encontrado.') + '</div>';
+    resBox.textContent = res ? res.message : 'Protocolo não encontrado.';
     return;
   }
 
@@ -629,12 +687,12 @@ function exibirResultadoProtocolo(res) {
     statusNome = 'Expirado';
   }
 
-  resBox.innerHTML = 
-    '<div style="font-size: 0.8rem; color: var(--text-muted);">Protocolo: <strong>' + d.protocolo + '</strong></div>' +
-    '<div style="font-size: 0.95rem; margin: 4px 0;">Participante: <strong>' + d.participante + '</strong></div>' +
-    '<div style="font-size: 0.95rem; margin: 4px 0;">Números: <strong>' + d.numeros.join(', ') + '</strong> (' + d.quantidade + ' pontos)</div>' +
-    '<div style="font-size: 0.95rem; margin: 4px 0;">Valor: <strong>' + d.valorTotalFormatado + '</strong></div>' +
-    '<div style="margin-top: 8px;">Status: <span style="font-weight: 800; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; ' + badgeStyle + '">' + statusNome + '</span></div>';
+  resBox.textContent = '';
+  [['Protocolo', d.protocolo], ['Participante', d.participante], ['Números', d.numeros.join(', ')], ['Valor', d.valorTotalFormatado], ['Status', statusNome]].forEach(function(item) {
+    var line = document.createElement('div');
+    line.textContent = item[0] + ': ' + item[1];
+    resBox.appendChild(line);
+  });
 }
 
 /**
@@ -657,7 +715,7 @@ function showToast(msg, type) {
   var toast = document.createElement('div');
   toast.className = 'toast ' + (type || 'info');
   var icon = type === 'success' ? '✓' : (type === 'error' ? '✕' : 'ℹ');
-  toast.innerHTML = '<span style="font-weight: bold;">' + icon + '</span> ' + msg;
+  toast.textContent = icon + ' ' + msg;
 
   container.appendChild(toast);
   setTimeout(function() {
@@ -705,7 +763,7 @@ function getMockInitialData() {
     success: true,
     campanha: {
       nomeEstabelecimento: 'Coffee Music Cafeteria',
-      nomeCampanha: 'Rifa Coberta',
+      nomeCampanha: 'Ação entre Amigos',
       premio: 'Final de semana em uma linda casa de praia em Beberibe/CE.',
       totalPontos: 500,
       valorUnitario: 20.00,
@@ -721,12 +779,4 @@ function getMockInitialData() {
   };
 }
 
-function irParaAdmin() {
-  if (window.top && window.top.location) {
-    var base = window.top.location.href.split('?')[0];
-    window.top.location.href = base + '?pagina=admin';
-  } else {
-    window.location.search = '?pagina=admin';
-  }
-}
 </script>

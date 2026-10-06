@@ -6,7 +6,7 @@
  * Obtém a planilha ativa (container-bound) ou busca por ID salvo nas propriedades.
  * Caso não exista, cria uma nova automaticamente.
  */
-function getSpreadsheet() {
+function getSpreadsheet_() {
   try {
     var active = SpreadsheetApp.getActiveSpreadsheet();
     if (active) return active;
@@ -19,7 +19,7 @@ function getSpreadsheet() {
     try {
       return SpreadsheetApp.openById(sheetId);
     } catch (e) {
-      Logger.log('Erro ao abrir planilha por ID: ' + e.message);
+      throw new Error('Não foi possível abrir a planilha configurada. Verifique o acesso no editor.');
     }
   }
 
@@ -33,7 +33,7 @@ function getSpreadsheet() {
 /**
  * Obtém ou cria uma aba pelo nome
  */
-function getOrCreateSheet(ss, name, headers) {
+function getOrCreateSheet_(ss, name, headers) {
   var sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
@@ -52,13 +52,13 @@ function getOrCreateSheet(ss, name, headers) {
 /**
  * Registra uma ação na aba LOGS
  */
-function logAction(acao, usuario, detalhes) {
+function logAction_(acao, usuario, detalhes) {
   try {
-    var ss = getSpreadsheet();
-    var sheet = getOrCreateSheet(ss, CONFIG.SHEETS.LOGS, ['dataHora', 'acao', 'usuario', 'detalhes']);
-    var dataHora = formatDateTime(new Date());
+    var ss = getSpreadsheet_();
+    var sheet = getOrCreateSheet_(ss, CONFIG.SHEETS.LOGS, ['dataHora', 'acao', 'usuario', 'detalhes']);
+    var dataHora = formatDateTime_(new Date());
     var detalhesStr = (typeof detalhes === 'object') ? JSON.stringify(detalhes) : String(detalhes || '');
-    sheet.appendRow([dataHora, acao, usuario || 'SISTEMA', detalhesStr]);
+    sheet.appendRow([dataHora, textoPlanilha_(acao), textoPlanilha_(usuario || 'SISTEMA'), textoPlanilha_(detalhesStr)]);
   } catch (e) {
     Logger.log('Falha ao registrar log: ' + e.message);
   }
@@ -67,9 +67,9 @@ function logAction(acao, usuario, detalhes) {
 /**
  * Lê uma configuração da aba CONFIGURACOES
  */
-function getSheetConfig(chave) {
+function getSheetConfig_(chave) {
   try {
-    var ss = getSpreadsheet();
+    var ss = getSpreadsheet_();
     var sheet = ss.getSheetByName(CONFIG.SHEETS.CONFIGURACOES);
     if (!sheet) return null;
 
@@ -86,10 +86,10 @@ function getSheetConfig(chave) {
 /**
  * Salva ou atualiza uma configuração na aba CONFIGURACOES
  */
-function setSheetConfig(chave, valor) {
+function setSheetConfig_(chave, valor) {
   try {
-    var ss = getSpreadsheet();
-    var sheet = getOrCreateSheet(ss, CONFIG.SHEETS.CONFIGURACOES, ['chave', 'valor', 'descricao']);
+    var ss = getSpreadsheet_();
+    var sheet = getOrCreateSheet_(ss, CONFIG.SHEETS.CONFIGURACOES, ['chave', 'valor', 'descricao']);
     var data = sheet.getDataRange().getValues();
     var rowIndex = -1;
 
@@ -101,9 +101,9 @@ function setSheetConfig(chave, valor) {
     }
 
     if (rowIndex > 0) {
-      sheet.getRange(rowIndex, 2).setValue(valor);
+      sheet.getRange(rowIndex, 2).setValue(typeof valor === 'string' ? textoPlanilha_(valor) : valor);
     } else {
-      sheet.appendRow([chave, valor, '']);
+      sheet.appendRow([chave, typeof valor === 'string' ? textoPlanilha_(valor) : valor, '']);
     }
 
     // Sincroniza também no PropertiesService
@@ -111,15 +111,15 @@ function setSheetConfig(chave, valor) {
     return true;
   } catch (e) {
     Logger.log('Erro ao salvar config ' + chave + ': ' + e.message);
-    return false;
+    throw new Error('Falha ao salvar configuração. Tente novamente.');
   }
 }
 
 /**
  * Retorna todos os números em formato estruturado
  */
-function getNumerosRaw() {
-  var ss = getSpreadsheet();
+function getNumerosRaw_() {
+  var ss = getSpreadsheet_();
   var sheet = ss.getSheetByName(CONFIG.SHEETS.NUMEROS);
   if (!sheet) return [];
 
@@ -130,7 +130,7 @@ function getNumerosRaw() {
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
     numeros.push({
-      numero: padNumero(row[0], 3),
+      numero: padNumero_(row[0], 3),
       status: row[1] || CONFIG.STATUS.DISPONIVEL,
       reservaId: row[2] || '',
       participanteId: row[3] || '',

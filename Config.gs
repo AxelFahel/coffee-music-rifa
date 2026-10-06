@@ -1,11 +1,11 @@
 /**
- * Config.gs - Configurações centrais do sistema Rifa Coberta - Coffee Music
+ * Config.gs - Configurações centrais do sistema Ação entre Amigos - Coffee Music
  */
 
 var CONFIG = {
   // Dados da Campanha
   NOME_ESTABELECIMENTO: 'Coffee Music Cafeteria',
-  NOME_CAMPANHA: 'Rifa Coberta',
+  NOME_CAMPANHA: 'Ação entre Amigos',
   PREMIO: 'Final de semana em uma linda casa de praia em Beberibe/CE',
   TOTAL_NUMEROS: 500,
   VALOR_NUMERO: 20.00,
@@ -19,8 +19,6 @@ var CONFIG = {
   WHATSAPP_CONTATO: '5585999998888', // WhatsApp oficial para contato
 
   // Segurança e Acesso
-  ADMIN_PIN_PADRAO: 'coffee2026', // PIN administrativo inicial (pode ser alterado)
-  ADMIN_EMAILS: ['admin@coffeemusic.com.br'],
 
   // Pastas Google Drive
   NOME_PASTA_DRIVE: 'Coffee Music - Rifa Coberta',
@@ -51,7 +49,7 @@ var CONFIG = {
  * Obtém o valor de uma configuração persistida (Planilha ou PropertiesService)
  * com fallback para os valores padrões definidos acima.
  */
-function getConfigValue(chave, valorPadrao) {
+function getConfigValue_(chave, valorPadrao) {
   try {
     var props = PropertiesService.getScriptProperties();
     var val = props.getProperty(chave);
@@ -63,7 +61,7 @@ function getConfigValue(chave, valorPadrao) {
   }
 
   try {
-    var sheetVal = getSheetConfig(chave);
+    var sheetVal = getSheetConfig_(chave);
     if (sheetVal !== null && sheetVal !== undefined && sheetVal !== '') {
       return sheetVal;
     }
@@ -77,19 +75,19 @@ function getConfigValue(chave, valorPadrao) {
 /**
  * Retorna as configurações ativas consolidadas
  */
-function getActiveConfig() {
+function getActiveConfig_() {
   return {
-    nomeEstabelecimento: getConfigValue('nomeEstabelecimento', CONFIG.NOME_ESTABELECIMENTO),
-    nomeCampanha: getConfigValue('nomeCampanha', CONFIG.NOME_CAMPANHA),
-    premio: getConfigValue('premio', CONFIG.PREMIO),
-    totalNumeros: Number(getConfigValue('quantidadeNumeros', CONFIG.TOTAL_NUMEROS)),
-    valorNumero: Number(getConfigValue('valorNumero', CONFIG.VALOR_NUMERO)),
-    tempoReservaMinutos: Number(getConfigValue('tempoReservaMinutos', CONFIG.TEMPO_RESERVA_MINUTOS)),
-    chavePix: getConfigValue('chavePix', CONFIG.CHAVE_PIX),
-    tipoChavePix: getConfigValue('tipoChavePix', CONFIG.TIPO_CHAVE_PIX),
-    nomeFavorecido: getConfigValue('nomeFavorecido', CONFIG.NOME_FAVORECIDO),
-    cidadePix: getConfigValue('cidadePix', CONFIG.CIDADE_PIX),
-    whatsappContato: getConfigValue('whatsappContato', CONFIG.WHATSAPP_CONTATO),
+    nomeEstabelecimento: getConfigValue_('nomeEstabelecimento', CONFIG.NOME_ESTABELECIMENTO),
+    nomeCampanha: getConfigValue_('nomeCampanha', CONFIG.NOME_CAMPANHA),
+    premio: getConfigValue_('premio', CONFIG.PREMIO),
+    totalNumeros: Number(getConfigValue_('quantidadeNumeros', CONFIG.TOTAL_NUMEROS)),
+    valorNumero: Number(getConfigValue_('valorNumero', CONFIG.VALOR_NUMERO)),
+    tempoReservaMinutos: Number(getConfigValue_('tempoReservaMinutos', CONFIG.TEMPO_RESERVA_MINUTOS)),
+    chavePix: getConfigValue_('chavePix', CONFIG.CHAVE_PIX),
+    tipoChavePix: getConfigValue_('tipoChavePix', CONFIG.TIPO_CHAVE_PIX),
+    nomeFavorecido: getConfigValue_('nomeFavorecido', CONFIG.NOME_FAVORECIDO),
+    cidadePix: getConfigValue_('cidadePix', CONFIG.CIDADE_PIX),
+    whatsappContato: getConfigValue_('whatsappContato', CONFIG.WHATSAPP_CONTATO),
     driveFolderId: PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID') || '',
     spreadsheetId: PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID') || ''
   };

@@ -5,54 +5,24 @@
 /**
  * Validação de credenciais do administrador (PIN ou E-mail da Conta Google)
  */
-function verificarAdminAuth(token) {
-  // 1. Validação por PIN padrão de emergência (coffee2026)
-  if (token && String(token).trim() === 'coffee2026') {
-    return { autorizado: true, usuario: 'ADMIN_PIN' };
-  }
-
-  // 2. Validação por PIN administrativo salvo
-  try {
-    var adminPinSalvo = getConfigValue('adminPin', CONFIG.ADMIN_PIN_PADRAO);
-    if (token && String(token).trim() === String(adminPinSalvo).trim()) {
-      return { autorizado: true, usuario: 'ADMIN_PIN' };
-    }
-  } catch (e) {}
-
-  // 3. Verifica se a conta Google logada é administradora
-  try {
-    var email = Session.getActiveUser().getEmail();
-    if (email) {
-      var adminEmails = (PropertiesService.getScriptProperties().getProperty('ADMIN_EMAILS') || CONFIG.ADMIN_EMAILS.join(',')).split(',');
-      for (var i = 0; i < adminEmails.length; i++) {
-        if (email.toLowerCase().trim() === adminEmails[i].toLowerCase().trim()) {
-          return { autorizado: true, usuario: email };
-        }
-      }
-    }
-  } catch (e) {}
-
-  return { autorizado: false, usuario: null };
-}
-
 /**
  * Retorna dados completos do Dashboard Administrativo
  */
 function getAdminDashboard(token) {
-  var auth = verificarAdminAuth(token);
+  var auth = verificarAdminAuth_(token);
   if (!auth.autorizado) {
     return { success: false, unauthorized: true, message: 'Acesso não autorizado. Informe o PIN ou faça login com conta administradora.' };
   }
 
   try {
-    var ss = getSpreadsheet();
-    var config = getActiveConfig();
+    var ss = getSpreadsheet_();
+    var config = getActiveConfig_();
 
-    var sheetNumeros = getOrCreateSheet(ss, CONFIG.SHEETS.NUMEROS, []);
-    var sheetReservas = getOrCreateSheet(ss, CONFIG.SHEETS.RESERVAS, []);
-    var sheetPagamentos = getOrCreateSheet(ss, CONFIG.SHEETS.PAGAMENTOS, []);
-    var sheetPart = getOrCreateSheet(ss, CONFIG.SHEETS.PARTICIPANTES, []);
-    var sheetLogs = getOrCreateSheet(ss, CONFIG.SHEETS.LOGS, []);
+    var sheetNumeros = getOrCreateSheet_(ss, CONFIG.SHEETS.NUMEROS, []);
+    var sheetReservas = getOrCreateSheet_(ss, CONFIG.SHEETS.RESERVAS, []);
+    var sheetPagamentos = getOrCreateSheet_(ss, CONFIG.SHEETS.PAGAMENTOS, []);
+    var sheetPart = getOrCreateSheet_(ss, CONFIG.SHEETS.PARTICIPANTES, []);
+    var sheetLogs = getOrCreateSheet_(ss, CONFIG.SHEETS.LOGS, []);
 
     // 1. Contagens dos Números
     var dataNumeros = sheetNumeros.getDataRange().getValues();
@@ -133,10 +103,10 @@ function getAdminDashboard(token) {
           numeros: String(resInfo.numeros || '').split(',').map(function(s) { return s.trim(); }),
           quantidade: Number(resInfo.quantidade || 0),
           valor: Number(pagRow[3] || 0),
-          valorFormatado: formatCurrency(pagRow[3] || 0),
+          valorFormatado: formatCurrency_(pagRow[3] || 0),
           comprovanteUrl: String(pagRow[4] || ''),
-          dataEnvio: String(pagRow[6] ? formatDateTime(pagRow[6]) : ''),
-          dataEnvioFormatada: String(pagRow[6] ? formatDateTime(pagRow[6]) : '')
+          dataEnvio: String(pagRow[6] ? formatDateTime_(pagRow[6]) : ''),
+          dataEnvioFormatada: String(pagRow[6] ? formatDateTime_(pagRow[6]) : '')
         });
       }
     }
@@ -146,7 +116,7 @@ function getAdminDashboard(token) {
     var dataLogs = sheetLogs.getDataRange().getValues();
     var inicioLogs = Math.max(1, dataLogs.length - 25);
     for (var l = dataLogs.length - 1; l >= inicioLogs; l--) {
-      var dataHoraStr = dataLogs[l][0] ? (dataLogs[l][0] instanceof Date ? formatDateTime(dataLogs[l][0]) : String(dataLogs[l][0])) : '';
+      var dataHoraStr = dataLogs[l][0] ? (dataLogs[l][0] instanceof Date ? formatDateTime_(dataLogs[l][0]) : String(dataLogs[l][0])) : '';
       logs.push({
         dataHora: dataHoraStr,
         acao: String(dataLogs[l][1] || ''),
@@ -165,8 +135,8 @@ function getAdminDashboard(token) {
         reservados: stats.reservados,
         aguardando: stats.aguardando,
         confirmados: stats.confirmados,
-        valorConfirmado: formatCurrency(stats.valorConfirmado),
-        valorAguardando: formatCurrency(stats.valorAguardando)
+        valorConfirmado: formatCurrency_(stats.valorConfirmado),
+        valorAguardando: formatCurrency_(stats.valorAguardando)
       },
       pendentes: pendentes,
       logs: logs,
@@ -189,191 +159,93 @@ function getAdminDashboard(token) {
  * Aprova o pagamento e confirma definitivamente os números
  */
 function aprovarPagamento(token, pagamentoId, reservaId) {
-  var auth = verificarAdminAuth(token);
-  if (!auth.autorizado) {
-    return { success: false, message: 'Não autorizado.' };
-  }
-
-  var lock = LockService.getScriptLock();
-  try {
-    var lockAdquirido = lock.tryLock(20000);
-    if (!lockAdquirido) {
-      return { success: false, message: 'Sistema ocupado. Tente novamente.' };
-    }
-
-    var ss = getSpreadsheet();
-    var sheetPag = ss.getSheetByName(CONFIG.SHEETS.PAGAMENTOS);
-    var sheetRes = ss.getSheetByName(CONFIG.SHEETS.RESERVAS);
-    var sheetNum = ss.getSheetByName(CONFIG.SHEETS.NUMEROS);
-
-    var agora = new Date();
-    var agoraISO = agora.toISOString();
-
-    // 1. Atualiza Pagamento
-    var dataPag = sheetPag.getDataRange().getValues();
-    for (var p = 1; p < dataPag.length; p++) {
-      if (dataPag[p][0] === pagamentoId) {
-        sheetPag.getRange(p + 1, 6).setValue('APROVADO'); // status
-        sheetPag.getRange(p + 1, 8).setValue(formatDateTime(agora)); // dataValidacao
-        break;
-      }
-    }
-
-    // 2. Atualiza Reserva e recupera números
-    var numerosArr = [];
-    var dataRes = sheetRes.getDataRange().getValues();
-    for (var r = 1; r < dataRes.length; r++) {
-      if (dataRes[r][0] === reservaId) {
-        sheetRes.getRange(r + 1, 7).setValue(CONFIG.STATUS.CONFIRMADO);
-        numerosArr = String(dataRes[r][2]).split(',').map(function(s) { return s.trim(); });
-        break;
-      }
-    }
-
-    // 3. Atualiza Números na grade
-    var dataNum = sheetNum.getDataRange().getValues();
-    for (var n = 1; n < dataNum.length; n++) {
-      var numAtual = padNumero(dataNum[n][0], 3);
-      if (numerosArr.indexOf(numAtual) !== -1) {
-        sheetNum.getRange(n + 1, 2).setValue(CONFIG.STATUS.CONFIRMADO); // status
-        sheetNum.getRange(n + 1, 7).setValue(agoraISO); // dataConfirmacao
-      }
-    }
-
-    logAction('PAGAMENTO_APROVADO', auth.usuario, {
-      pagamentoId: pagamentoId,
-      reservaId: reservaId,
-      numeros: numerosArr
-    });
-
-    lock.releaseLock();
-    return { success: true, message: 'Pagamento aprovado e números confirmados com sucesso!' };
-  } catch (err) {
-    if (lock) lock.releaseLock();
-    return { success: false, message: 'Erro ao aprovar pagamento: ' + err.message };
-  }
+  return decidirPagamento_(token, pagamentoId, reservaId, 'APROVAR', '', '');
 }
 
-/**
- * Rejeita o pagamento com motivo e opção de liberar ou manter os números
- */
 function rejeitarPagamento(token, pagamentoId, reservaId, motivo, acaoNumeros) {
-  var auth = verificarAdminAuth(token);
-  if (!auth.autorizado) {
-    return { success: false, message: 'Não autorizado.' };
+  if (typeof motivo !== 'string' || !motivo.trim() || motivo.length > 300 || ['LIBERAR', 'MANTER'].indexOf(acaoNumeros) < 0) {
+    return { success: false, message: 'Informe um motivo válido e a ação dos números.' };
   }
+  return decidirPagamento_(token, pagamentoId, reservaId, 'REJEITAR', motivo.trim(), acaoNumeros);
+}
 
+function decidirPagamento_(token, pagamentoId, reservaId, decisao, motivo, acao) {
   var lock = LockService.getScriptLock();
   try {
-    var lockAdquirido = lock.tryLock(20000);
-    if (!lockAdquirido) {
-      return { success: false, message: 'Sistema ocupado. Tente novamente.' };
-    }
-
-    var ss = getSpreadsheet();
-    var sheetPag = ss.getSheetByName(CONFIG.SHEETS.PAGAMENTOS);
-    var sheetRes = ss.getSheetByName(CONFIG.SHEETS.RESERVAS);
-    var sheetNum = ss.getSheetByName(CONFIG.SHEETS.NUMEROS);
-
-    var agora = new Date();
-    var motivoTexto = motivo || 'Comprovante não aceito';
-
-    // 1. Atualiza Pagamento
-    var dataPag = sheetPag.getDataRange().getValues();
-    for (var p = 1; p < dataPag.length; p++) {
-      if (dataPag[p][0] === pagamentoId) {
-        sheetPag.getRange(p + 1, 6).setValue('REJEITADO');
-        sheetPag.getRange(p + 1, 8).setValue(formatDateTime(agora));
-        sheetPag.getRange(p + 1, 9).setValue(motivoTexto);
-        break;
+    if (!verificarAdminAuth_(token).autorizado) return { success: false, unauthorized: true, message: 'Sessão expirada. Entre novamente.' };
+    if (!lock.tryLock(20000)) throw new Error('Sistema ocupado. Tente novamente.');
+    // Revalida após esperar pelo lock.
+    if (!verificarAdminAuth_(token).autorizado) throw new Error('Sessão expirada.');
+    var ss = getSpreadsheet_();
+    var pag = ss.getSheetByName(CONFIG.SHEETS.PAGAMENTOS);
+    var res = ss.getSheetByName(CONFIG.SHEETS.RESERVAS);
+    var num = ss.getSheetByName(CONFIG.SHEETS.NUMEROS);
+    var pagamentos = pag.getDataRange().getValues();
+    var reservas = res.getDataRange().getValues();
+    var pi = pagamentos.findIndex(function(row, i) { return i > 0 && String(row[0]) === pagamentoId; });
+    var ri = reservas.findIndex(function(row, i) { return i > 0 && String(row[0]) === reservaId; });
+    if (pi < 0 || ri < 0 || String(pagamentos[pi][1]) !== reservaId || String(pagamentos[pi][2]) !== String(reservas[ri][1])) throw new Error('Pagamento e reserva não correspondem.');
+    if (String(pagamentos[pi][5]) !== CONFIG.STATUS.AGUARDANDO_VALIDACAO || String(reservas[ri][6]) !== CONFIG.STATUS.AGUARDANDO_VALIDACAO) throw new Error('Este pagamento já foi processado ou não está pendente.');
+    if (Number(pagamentos[pi][3]) !== Number(reservas[ri][5])) throw new Error('Valores inconsistentes.');
+    var numeros = String(reservas[ri][2]).split(',').map(function(n) { return n.trim(); });
+    var rows = validarNumerosReserva_(num, reservaId, numeros, CONFIG.STATUS.AGUARDANDO_VALIDACAO);
+    var novoStatus = decisao === 'APROVAR' ? CONFIG.STATUS.CONFIRMADO : (acao === 'LIBERAR' ? 'REJEITADO_LIBERADO' : 'REJEITADO_RETIDO');
+    rows.forEach(function(row) {
+      if (decisao === 'APROVAR') {
+        num.getRange(row, 2).setValue(CONFIG.STATUS.CONFIRMADO);
+        num.getRange(row, 7).setValue(new Date().toISOString());
+      } else if (acao === 'LIBERAR') {
+        num.getRange(row, 2, 1, 6).setValues([[CONFIG.STATUS.DISPONIVEL, '', '', '', '', '']]);
       }
-    }
-
-    // 2. Atualiza Reserva e recupera números
-    var numerosArr = [];
-    var dataRes = sheetRes.getDataRange().getValues();
-    for (var r = 1; r < dataRes.length; r++) {
-      if (dataRes[r][0] === reservaId) {
-        var novoStatusReserva = (acaoNumeros === 'LIBERAR') ? 'REJEITADO_LIBERADO' : 'REJEITADO_RETIDO';
-        sheetRes.getRange(r + 1, 7).setValue(novoStatusReserva);
-        numerosArr = String(dataRes[r][2]).split(',').map(function(s) { return s.trim(); });
-        break;
-      }
-    }
-
-    // 3. Se ação for LIBERAR, devolve números para DISPONIVEL
-    if (acaoNumeros === 'LIBERAR') {
-      var dataNum = sheetNum.getDataRange().getValues();
-      for (var n = 1; n < dataNum.length; n++) {
-        var numAtual = padNumero(dataNum[n][0], 3);
-        if (numerosArr.indexOf(numAtual) !== -1) {
-          sheetNum.getRange(n + 1, 2, 1, 5).setValues([[
-            CONFIG.STATUS.DISPONIVEL,
-            '', // reservaId
-            '', // participanteId
-            '', // dataReserva
-            ''  // dataExpiracao
-          ]]);
-        }
-      }
-    }
-
-    logAction('PAGAMENTO_REJEITADO', auth.usuario, {
-      pagamentoId: pagamentoId,
-      reservaId: reservaId,
-      motivo: motivoTexto,
-      acaoNumeros: acaoNumeros,
-      numeros: numerosArr
     });
-
-    lock.releaseLock();
-    return {
-      success: true,
-      message: 'Pagamento rejeitado. ' + (acaoNumeros === 'LIBERAR' ? 'Números liberados para compra.' : 'Números mantidos bloqueados.')
-    };
-  } catch (err) {
-    if (lock) lock.releaseLock();
-    return { success: false, message: 'Erro ao rejeitar pagamento: ' + err.message };
-  }
+    res.getRange(ri + 1, 7).setValue(novoStatus);
+    pag.getRange(pi + 1, 6).setValue(decisao === 'APROVAR' ? 'APROVADO' : 'REJEITADO');
+    pag.getRange(pi + 1, 8, 1, 2).setValues([[formatDateTime_(new Date()), textoPlanilha_(motivo)]]);
+    SpreadsheetApp.flush();
+    logAction_('PAGAMENTO_' + decisao, 'ADMIN', { pagamentoId: pagamentoId, reservaId: reservaId, acao: acao });
+    return { success: true, message: decisao === 'APROVAR' ? 'Pagamento aprovado.' : 'Pagamento rejeitado.' };
+  } catch (err) { return { success: false, message: err.message }; }
+  finally { if (lock.hasLock()) lock.releaseLock(); }
 }
 
 /**
  * Salva configurações do sistema a partir do painel administrativo
  */
 function salvarConfiguracoesAdmin(token, novasConfigs) {
-  var auth = verificarAdminAuth(token);
-  if (!auth.autorizado) {
-    return { success: false, message: 'Não autorizado.' };
-  }
-
+  var lock = LockService.getScriptLock();
   try {
-    if (novasConfigs.chavePix) setSheetConfig('chavePix', novasConfigs.chavePix);
-    if (novasConfigs.nomeFavorecido) setSheetConfig('nomeFavorecido', novasConfigs.nomeFavorecido);
-    if (novasConfigs.cidadePix) setSheetConfig('cidadePix', novasConfigs.cidadePix);
-    if (novasConfigs.whatsappContato) setSheetConfig('whatsappContato', novasConfigs.whatsappContato);
-    if (novasConfigs.valorNumero) setSheetConfig('valorNumero', Number(novasConfigs.valorNumero));
-    if (novasConfigs.tempoReservaMinutos) setSheetConfig('tempoReservaMinutos', Number(novasConfigs.tempoReservaMinutos));
-    if (novasConfigs.adminPin) {
-      setSheetConfig('adminPin', novasConfigs.adminPin);
-      PropertiesService.getScriptProperties().setProperty('adminPin', String(novasConfigs.adminPin));
-    }
-
-    logAction('CONFIGURACOES_ATUALIZADAS', auth.usuario, novasConfigs);
-    return { success: true, message: 'Configurações atualizadas com sucesso!' };
-  } catch (err) {
-    return { success: false, message: 'Erro ao salvar configurações: ' + err.message };
-  }
+    if (!verificarAdminAuth_(token).autorizado) return { success: false, unauthorized: true, message: 'Sessão expirada.' };
+    if (!novasConfigs || typeof novasConfigs !== 'object') throw new Error('Configurações inválidas.');
+    var cfg = {};
+    ['chavePix', 'nomeFavorecido', 'cidadePix', 'whatsappContato'].forEach(function(k) {
+      var v = novasConfigs[k];
+      if (typeof v !== 'string' || !v.trim() || v.length > 150) throw new Error('Preencha os dados de PIX e contato corretamente.');
+      cfg[k] = v.trim();
+    });
+    cfg.valorNumero = Number(novasConfigs.valorNumero);
+    cfg.tempoReservaMinutos = Number(novasConfigs.tempoReservaMinutos);
+    if (!isFinite(cfg.valorNumero) || cfg.valorNumero <= 0 || cfg.valorNumero > 10000) throw new Error('Valor por número inválido.');
+    if (!Number.isInteger(cfg.tempoReservaMinutos) || cfg.tempoReservaMinutos < 1 || cfg.tempoReservaMinutos > 1440) throw new Error('Prazo inválido (1 a 1440 minutos).');
+    if (novasConfigs.adminPin) validarPin_(novasConfigs.adminPin);
+    if (!lock.tryLock(20000)) throw new Error('Sistema ocupado.');
+    if (!verificarAdminAuth_(token).autorizado) throw new Error('Sessão expirada.');
+    Object.keys(cfg).forEach(function(k) { setSheetConfig_(k, cfg[k]); });
+    if (novasConfigs.adminPin) definirPin_(novasConfigs.adminPin);
+    logAction_('CONFIGURACOES_ATUALIZADAS', 'ADMIN', { campos: Object.keys(cfg), senhaAlterada: !!novasConfigs.adminPin });
+    return { success: true, relogin: !!novasConfigs.adminPin, message: novasConfigs.adminPin ? 'Senha alterada. Entre novamente.' : 'Configurações salvas.' };
+  } catch (err) { return { success: false, message: err.message }; }
+  finally { if (lock.hasLock()) lock.releaseLock(); }
 }
 
 /**
  * Executa a liberação de reservas expiradas manualmente sob demanda do painel
  */
 function executarLimpezaManual(token) {
-  var auth = verificarAdminAuth(token);
+  var auth = verificarAdminAuth_(token);
   if (!auth.autorizado) {
     return { success: false, message: 'Não autorizado.' };
   }
 
-  liberarReservasExpiradas();
+  liberarReservasExpiradas_();
   return { success: true, message: 'Limpeza de reservas expiradas executada com sucesso!' };
 }

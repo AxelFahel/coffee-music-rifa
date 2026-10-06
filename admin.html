@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Painel Administrativo | Rifa Coberta - Coffee Music</title>
+  <title>Painel Administrativo | Ação entre Amigos - Coffee Music</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   
-  <?!= include('styles'); ?>
+  <?!= include_('styles'); ?>
   
   <style>
     /* Estilos exclusivos do Painel Administrativo */
@@ -162,13 +162,13 @@
         <div class="coffee-icon-badge" aria-hidden="true">☕</div>
         <div>
           <h1 class="brand-title">Coffee Music • Admin</h1>
-          <span class="brand-subtitle">Gestão da Rifa Coberta</span>
+          <span class="brand-subtitle">Gestão da Ação entre Amigos</span>
         </div>
       </div>
       <div style="display: flex; gap: 8px;">
-        <button type="button" class="btn-outline-header" onclick="irParaInicio()">
-          🌐 Ir para Página Pública
-        </button>
+        <a class="btn-outline-header" href="<?= serviceUrl ?>?pagina=index" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+          🌐 Abrir Página Pública ↗
+        </a>
         <button type="button" id="btn-logout" class="btn-outline-header" onclick="fazerLogout()" style="display: none;">
           🚪 Sair
         </button>
@@ -182,18 +182,21 @@
       <div style="font-size: 44px; margin-bottom: 10px;">🔐</div>
       <h2 style="font-size: 1.4rem; color: var(--primary); font-weight: 800;">Acesso Administrativo</h2>
       <p style="font-size: 0.85rem; color: var(--text-muted); margin: 8px 0 20px;">
-        Informe o PIN administrativo ou acesse com uma conta Google cadastrada.
+        Use a conta Google proprietária do projeto ou sua senha administrativa. A sessão dura até uma hora.
       </p>
 
       <form onsubmit="autenticarAdmin(event)">
         <div class="form-group" style="text-align: left;">
           <label for="admin-pin-input" class="form-label">PIN Administrativo</label>
-          <input type="password" id="admin-pin-input" class="form-control" placeholder="••••••••" required>
+          <input type="password" id="admin-pin-input" autocomplete="current-password" maxlength="128" class="form-control" placeholder="••••••••" required>
         </div>
         <button type="submit" id="btn-login-submit" class="btn-primary-block">
           ACESSAR PAINEL
         </button>
       </form>
+      <button type="button" class="btn-primary-block" style="margin-top: 12px;" onclick="autenticarAdmin(event, true)">
+        ENTRAR COM A CONTA GOOGLE PROPRIETÁRIA
+      </button>
     </div>
   </div>
 
@@ -366,7 +369,7 @@
             </div>
             <div class="form-group">
               <label for="cfg-admin-pin" class="form-label">Alterar PIN Administrativo</label>
-              <input type="password" id="cfg-admin-pin" class="form-control" placeholder="Deixe em branco para manter o atual">
+              <input type="password" id="cfg-admin-pin" autocomplete="new-password" minlength="12" maxlength="128" class="form-control" placeholder="Deixe em branco para manter o atual">
             </div>
           </div>
 
@@ -428,7 +431,7 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Ação com os Números da Rifa:</label>
+            <label class="form-label">Ação com os Números da Ação:</label>
             <div style="display: flex; gap: 12px; margin-top: 6px;">
               <label style="font-size: 0.85rem; font-weight: 600; cursor: pointer;">
                 <input type="radio" name="rej-acao" value="LIBERAR" checked> Liberar números (voltar para Disponível)
@@ -450,6 +453,6 @@
   <!-- Contêiner de Notificações Toast -->
   <div id="toast-container" class="toast-container"></div>
 
-  <?!= include('admin-scripts'); ?>
+  <?!= include_('admin-scripts'); ?>
 </body>
 </html>

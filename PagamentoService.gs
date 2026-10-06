@@ -11,6 +11,10 @@ function confirmarEnvioComprovante(payload) {
   }
 
   var protocolo = String(payload.reservaId).trim().toUpperCase();
+  if (protocolo.length > 40 || typeof payload.reservaToken !== 'string' || !/^[a-f0-9]{64}$/i.test(payload.reservaToken)) {
+    return { success: false, message: 'Acesso à reserva inválido. Reservas anteriores à atualização precisam de atendimento pelo responsável.' };
+  }
+  try { limitar_('UPLOADS', 20, 60); } catch (err) { return { success: false, message: err.message }; }
   var lock = LockService.getScriptLock();
 
   try {
@@ -19,11 +23,11 @@ function confirmarEnvioComprovante(payload) {
       return { success: false, message: 'Servidor ocupado. Tente novamente em alguns segundos.' };
     }
 
-    var ss = getSpreadsheet();
+    var ss = getSpreadsheet_();
     var sheetReservas = ss.getSheetByName(CONFIG.SHEETS.RESERVAS);
     var sheetNumeros = ss.getSheetByName(CONFIG.SHEETS.NUMEROS);
     var sheetPart = ss.getSheetByName(CONFIG.SHEETS.PARTICIPANTES);
-    var sheetPag = getOrCreateSheet(ss, CONFIG.SHEETS.PAGAMENTOS, [
+    var sheetPag = getOrCreateSheet_(ss, CONFIG.SHEETS.PAGAMENTOS, [
       'id', 'reservaId', 'participanteId', 'valor', 'comprovanteUrl', 'status', 'dataEnvio', 'dataValidacao', 'observacao'
     ]);
 
@@ -50,12 +54,26 @@ function confirmarEnvioComprovante(payload) {
       return { success: false, message: 'Protocolo de reserva não encontrado: ' + protocolo };
     }
 
+    if (!reservaRow[9] || !safeEqual_(hash_(payload.reservaToken), reservaRow[9])) {
+      throw new Error('Acesso à reserva inválido.');
+    }
+
     var statusAtual = String(reservaRow[6]);
     var participanteId = String(reservaRow[1]);
     var numerosStr = String(reservaRow[2]);
     var numerosArr = numerosStr.split(',').map(function(s) { return s.trim(); });
     var valorTotal = reservaRow[5];
     var dataExpiracao = new Date(reservaRow[8]);
+
+    if (statusAtual !== CONFIG.STATUS.RESERVADO) {
+      throw new Error(statusAtual === CONFIG.STATUS.AGUARDANDO_VALIDACAO ? 'Comprovante já recebido. Aguarde a análise.' : 'Esta reserva não aceita novos comprovantes.');
+    }
+    if (!isFinite(dataExpiracao.getTime())) throw new Error('Prazo de reserva inválido.');
+    var linhasNumeros = validarNumerosReserva_(sheetNumeros, protocolo, numerosArr, CONFIG.STATUS.RESERVADO);
+    var pagamentosExistentes = sheetPag.getDataRange().getValues();
+    if (pagamentosExistentes.some(function(row, i) { return i > 0 && String(row[1]) === protocolo; })) {
+      throw new Error('Já existe um comprovante para esta reserva. Procure o responsável.');
+    }
 
     if (statusAtual === CONFIG.STATUS.CONFIRMADO) {
       lock.releaseLock();
@@ -86,7 +104,7 @@ function confirmarEnvioComprovante(payload) {
     }
 
     // 1. Faz upload do arquivo para o Google Drive
-    var uploadResult = salvarComprovanteDrive(
+    var uploadResult = salvarComprovanteDrive_(
       payload.filePayload,
       nomeParticipante,
       numerosArr,
@@ -102,7 +120,7 @@ function confirmarEnvioComprovante(payload) {
     // 3. Atualiza os números para AGUARDANDO_VALIDACAO (protegendo contra expiração automática)
     var dataNumeros = sheetNumeros.getDataRange().getValues();
     for (var n = 1; n < dataNumeros.length; n++) {
-      var numSheet = padNumero(dataNumeros[n][0], 3);
+      var numSheet = padNumero_(dataNumeros[n][0], 3);
       if (numerosArr.indexOf(numSheet) !== -1) {
         sheetNumeros.getRange(n + 1, 2).setValue(CONFIG.STATUS.AGUARDANDO_VALIDACAO);
       }
@@ -116,13 +134,13 @@ function confirmarEnvioComprovante(payload) {
       valorTotal,
       uploadResult.fileUrl,
       CONFIG.STATUS.AGUARDANDO_VALIDACAO,
-      formatDateTime(agora),
+      formatDateTime_(agora),
       '', // dataValidacao
       ''  // observacao
     ]);
 
     // 5. Registra log
-    logAction('COMPROVANTE_ENVIADO', nomeParticipante, {
+    logAction_('COMPROVANTE_ENVIADO', nomeParticipante, {
       protocolo: protocolo,
       arquivo: uploadResult.fileName,
       url: uploadResult.fileUrl,
@@ -132,8 +150,8 @@ function confirmarEnvioComprovante(payload) {
     lock.releaseLock();
 
     // 6. Prepara link do WhatsApp para notificar a cafeteria
-    var config = getActiveConfig();
-    var whatsappUrl = buildWhatsAppUrl(
+    var config = getActiveConfig_();
+    var whatsappUrl = buildWhatsAppUrl_(
       config.whatsappContato,
       nomeParticipante,
       numerosArr,
@@ -145,7 +163,7 @@ function confirmarEnvioComprovante(payload) {
       success: true,
       protocolo: protocolo,
       numeros: numerosArr,
-      valorTotalFormatado: formatCurrency(valorTotal),
+      valorTotalFormatado: formatCurrency_(valorTotal),
       status: CONFIG.STATUS.AGUARDANDO_VALIDACAO,
       mensagem: 'Comprovante recebido com sucesso! Seu pagamento está aguardando validação.',
       whatsappUrl: whatsappUrl

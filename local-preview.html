@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>[Preview Local] Rifa Coberta | Coffee Music Cafeteria</title>
+  <title>[Preview Local] Ação entre Amigos | Coffee Music Cafeteria</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -412,7 +412,7 @@
   <main class="container">
     <section class="hero-card">
       <span class="hero-tag">🌴 Campanha Oficial</span>
-      <h2 class="hero-title">RIFA COBERTA</h2>
+      <h2 class="hero-title">AÇÃO ENTRE AMIGOS</h2>
       <p style="color: var(--text-muted); font-size: 1.05rem;">
         Participe com a Coffee Music e concorra a momentos inesquecíveis no litoral cearense!
       </p>
@@ -547,7 +547,7 @@
   <div id="modal-pagamento" class="modal-overlay">
     <div class="modal-box">
       <div class="modal-header">
-        <h3 class="modal-title">Pagamento PIX da Rifa</h3>
+        <h3 class="modal-title">Pagamento PIX</h3>
         <button type="button" class="modal-close" onclick="fecharModal('modal-pagamento')">✕</button>
       </div>
       <div class="modal-body">
@@ -820,7 +820,7 @@
         document.getElementById('sucesso-numeros').textContent = Array.from(selectedNumbers).sort().join(', ');
         document.getElementById('sucesso-valor').textContent = formatMoeda(selectedNumbers.size * valorUnitario);
 
-        var msgZap = encodeURIComponent('Olá! Participei da Rifa Coberta da Coffee Music.\nProtocolo: ' + protocoloAtual + '\nNúmeros: ' + Array.from(selectedNumbers).join(', ') + '\nValor: ' + formatMoeda(selectedNumbers.size * valorUnitario));
+        var msgZap = encodeURIComponent('Olá! Participei da Ação entre Amigos da Coffee Music.\nProtocolo: ' + protocoloAtual + '\nNúmeros: ' + Array.from(selectedNumbers).join(', ') + '\nValor: ' + formatMoeda(selectedNumbers.size * valorUnitario));
         document.getElementById('btn-whatsapp-notif').href = 'https://api.whatsapp.com/send?phone=5585999998888&text=' + msgZap;
 
         abrirModal('modal-sucesso');
